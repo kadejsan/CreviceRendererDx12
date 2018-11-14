@@ -9,6 +9,7 @@
 #endif
 
 #include <Windows.h>
+#include <WindowsX.h>
 #include <shellapi.h>
 
 // The min/max macros conflict with like-named member functions.
@@ -21,25 +22,22 @@
 #undef max
 #endif
 
-#include <d3d12.h>
-#include <dxgi1_6.h>
 #include <d3dcompiler.h>
-#include <DirectXMath.h>
-#include "d3dx12.h"
 
+#include "Types.h"
+
+// std
 #include <string>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <cassert>
 #include <chrono>
-
-#include <wrl.h>
-
-#ifdef _DEBUG
-#	include "Initguid.h"
-#	include "DXGIDebug.h"
-#endif
+#include <atomic>
+#include <array>
+#include <unordered_map>
+#include <comdef.h>
+#include <fstream>
 
 #define LOG( str, ... ) { char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); OutputDebugString(buffer); }
 

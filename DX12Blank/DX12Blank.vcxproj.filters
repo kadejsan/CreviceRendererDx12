@@ -16,14 +16,17 @@
     <Filter Include="Engine\Graphics\GpuApi\DirectX12">
       <UniqueIdentifier>{81e87d04-2731-43b5-9f4e-393cb93c80d8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Mesh">
+      <UniqueIdentifier>{30dafd63-60d8-4eee-b3fb-9c69b46b69d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Graphics\Shaders">
+      <UniqueIdentifier>{bd43cf59-fe7b-4a88-ba31-a47ee1717c50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Material">
+      <UniqueIdentifier>{11323f9b-a3e9-4eaa-af17-c4efeffa23f9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stringUtils.h">
-      <Filter>Engine\Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="DXHelper.h">
-      <Filter>Engine\Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="BaseWindow.h">
       <Filter>Engine</Filter>
     </ClInclude>
@@ -54,6 +57,36 @@
     <ClInclude Include="GraphicsResource.h">
       <Filter>Engine\Graphics\GpuApi\DirectX12</Filter>
     </ClInclude>
+    <ClInclude Include="Include_DX12.h">
+      <Filter>Engine\Graphics\GpuApi\DirectX12</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Engine\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Types.h">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClInclude>
+    <ClInclude Include="CubeMesh.h">
+      <Filter>Engine\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="StringUtils.h">
+      <Filter>Engine\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Engine\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="DXHelper.h">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DUtils.h">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClInclude>
+    <ClInclude Include="MathHelper.h">
+      <Filter>Engine\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -80,5 +113,28 @@
     <ClCompile Include="GraphicsResource.cpp">
       <Filter>Engine\Graphics\GpuApi\DirectX12</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Engine\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="CubeMesh.cpp">
+      <Filter>Engine\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Engine\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="D3DUtils.cpp">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClCompile>
+    <ClCompile Include="MathHelper.cpp">
+      <Filter>Engine\Utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SimpleColor.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

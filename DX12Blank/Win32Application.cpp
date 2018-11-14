@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Win32Application.h"
 #include "BaseWindow.h"
-#include "stringUtils.h"
+#include "StringUtils.h"
 
 HWND Win32Application::m_hwnd = nullptr;
 
@@ -88,9 +88,44 @@ LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM
 
 		case WM_KEYUP:
 		{
+			if (wParam == VK_ESCAPE)
+			{
+				PostQuitMessage(0);
+			}
 			if( window )
 			{
 				window->OnKeyUp( static_cast<UINT8>( wParam ) );
+			}
+		}
+		return 0;
+
+		case WM_LBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+		{
+			if (window)
+			{
+				window->OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			}
+		}
+		return 0;
+
+		case WM_LBUTTONUP:
+		case WM_MBUTTONUP:
+		case WM_RBUTTONUP:
+		{
+			if (window)
+			{
+				window->OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			}
+		}
+		return 0;
+
+		case WM_MOUSEMOVE:
+		{
+			if (window)
+			{
+				window->OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 			}
 		}
 		return 0;

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "BaseWindow.h"
+#include "MathHelper.h"
 
 using namespace std;
 
@@ -23,6 +24,51 @@ void BaseWindow::OnUpdate()
 	{
 		CalculateFrameStats();
 	}
+}
+
+void BaseWindow::OnMouseDown(WPARAM btnState, int x, int y)
+{
+	m_lastMousePos.x = x;
+	m_lastMousePos.y = y;
+
+	SetCapture(Win32Application::GetHwnd());
+}
+
+void BaseWindow::OnMouseUp(WPARAM btnState, int x, int y)
+{
+	ReleaseCapture();
+}
+
+void BaseWindow::OnMouseMove(WPARAM btnState, int x, int y)
+{
+	if ((btnState & MK_LBUTTON) != 0)
+	{
+		// Make each pixel correspond to a quarter of a degree.
+		float dx = XMConvertToRadians(0.25f*static_cast<float>(x - m_lastMousePos.x));
+		float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePos.y));
+
+		// Update angles based on input to orbit camera around box.
+		m_theta += dx;
+		m_phi += dy;
+
+		// Restrict the angle mPhi.
+		m_phi = MathHelper::Clamp(m_phi, 0.1f, MathHelper::Pi - 0.1f);
+	}
+	else if ((btnState & MK_RBUTTON) != 0)
+	{
+		// Make each pixel correspond to 0.005 unit in the scene.
+		float dx = 0.005f*static_cast<float>(x - m_lastMousePos.x);
+		float dy = 0.005f*static_cast<float>(y - m_lastMousePos.y);
+
+		// Update the camera radius based on input.
+		m_radius += dx - dy;
+
+		// Restrict the radius.
+		m_radius = MathHelper::Clamp(m_radius, 3.0f, 15.0f);
+	}
+
+	m_lastMousePos.x = x;
+	m_lastMousePos.y = y;
 }
 
 void BaseWindow::ParseCommandLineArgs(_In_reads_(argc) WCHAR* argv[], int argc)

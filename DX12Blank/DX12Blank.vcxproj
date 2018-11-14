@@ -86,7 +86,7 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
@@ -122,7 +122,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="CreviceWindow.h" />
+    <ClInclude Include="CubeMesh.h" />
+    <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EngineTimer.h" />
     <ClInclude Include="GraphicsDevice_DX12.h" />
@@ -130,19 +133,35 @@
     <ClInclude Include="GraphicsDescriptors.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GraphicsResource.h" />
+    <ClInclude Include="Include_DX12.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="MathHelper.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="stringUtils.h" />
+    <ClInclude Include="StringUtils.h" />
+    <ClInclude Include="Types.h" />
     <ClInclude Include="Win32Application.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CreviceWindow.cpp" />
+    <ClCompile Include="CubeMesh.cpp" />
+    <ClCompile Include="D3DUtils.cpp" />
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="MathHelper.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="Win32Application.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SimpleColor.hlsl">
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
