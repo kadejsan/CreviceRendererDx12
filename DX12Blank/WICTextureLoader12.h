@@ -56,7 +56,8 @@ namespace DirectX
         _Outptr_ ID3D12Resource** texture,
         std::unique_ptr<uint8_t[]>& decodedData,
         D3D12_SUBRESOURCE_DATA& subresource,
-        size_t maxsize = 0);
+        size_t maxsize = 0,
+		bool genMipMaps = false);
 
     // Extended version
     HRESULT __cdecl LoadWICTextureFromMemoryEx(

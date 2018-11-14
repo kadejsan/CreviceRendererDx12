@@ -68,14 +68,15 @@ namespace Graphics
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) override;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) override;
 
-		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
-		virtual void TransitionBarriers(GPUResource* const* resources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
+		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) override;
+		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) override;
 		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) override;
 		virtual void InvalidateBufferAccess(GPUBuffer* buffer) override;
 
 		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) override;
+		virtual void GenerateMipmaps(Texture* texture) override;
 
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();
@@ -229,5 +230,14 @@ namespace Graphics
 		};
 		UploadBuffer*						BufferUploader;
 		UploadBuffer*						TextureUploader;
+
+		ComputePSO*							m_linearDownsamplePSO;
+		ComputePSO*							m_gammaDownsamplePSO;
+		ComputePSO*							m_arrayDownsamplePSO;
+
+		void InitializeDownsamplePSOs();
+		void CreateTexture(UINT width, UINT height, UINT depth, DXGI_FORMAT format, UINT levels);
+		void CreateTextureSRV(Texture* texture, D3D12_SRV_DIMENSION dimension, UINT mostDetailedMip, UINT mipLevels);
+		void CreateTextureUAV(Texture* texture, UINT mipSlice);
 	};
 }

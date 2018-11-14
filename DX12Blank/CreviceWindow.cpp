@@ -185,10 +185,10 @@ void CreviceWindow::InitializeRenderObjects()
 
 void CreviceWindow::InitializeTextures()
 {
-	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_A.png", &m_textures[ETT_Albedo], false);
-	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_N.png", &m_textures[ETT_Normal], false);
-	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_R.png", &m_textures[ETT_Roughness], false);
-	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_M.png", &m_textures[ETT_Metalness], false);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_A.png", &m_textures[ETT_Albedo], true);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_N.png", &m_textures[ETT_Normal], true);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_R.png", &m_textures[ETT_Roughness], true);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_M.png", &m_textures[ETT_Metalness], true);
 
 	TextureDesc desc;
 	desc.Width = 1024; desc.Height = 1024;
@@ -200,6 +200,7 @@ void CreviceWindow::InitializeTextures()
 		// Unfiltered environment cube map (temporary).
 		desc.BindFlags |= BIND_UNORDERED_ACCESS;
 		desc.MiscFlags = RESOURCE_MISC_TEXTURECUBE;
+		desc.MipLevels = 0;
 		GetDevice().CreateTexture2D(desc, nullptr, &m_envTextureUnfiltered);
 
 		// Load & convert equirectangular environment map to cubemap texture
@@ -213,6 +214,9 @@ void CreviceWindow::InitializeTextures()
 			GetDevice().BindResource(SHADERSTAGE::CS, m_envTextureEquirect, 0);
 			GetDevice().BindUnorderedAccessResource(m_envTextureUnfiltered, 0);
 			GetDevice().Dispatch(m_envTexture->m_desc.Width / 32, m_envTexture->m_desc.Height / 32, 6);
+			GetDevice().TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
+
+			GetDevice().GenerateMipmaps(m_envTextureUnfiltered);
 		}
 	}
 }

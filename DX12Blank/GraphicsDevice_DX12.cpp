@@ -8,6 +8,7 @@
 #include "DDSTextureLoader12.h"
 #include "WICTextureLoader12.h"
 #include "Image.h"
+#include "Utils.h"
 
 # define USE_PIX
 #include <pix3.h>
@@ -1189,6 +1190,7 @@ namespace Graphics
 		retVal.Width = (UINT)desc.Width;
 		retVal.Height = desc.Height;
 		retVal.MipLevels = desc.MipLevels;
+		retVal.ArraySize = desc.DepthOrArraySize;
 
 		return retVal;
 	}
@@ -1372,6 +1374,8 @@ namespace Graphics
 			Frames[fr].SamplerDescriptorsGPU = new FrameResources::DescriptorTableFrameAllocator(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 16);
 			Frames[fr].ResourceBuffer = new FrameResources::ResourceFrameAllocator(m_device, 1024 * 1024 * 128);
 		}
+
+		InitializeDownsamplePSOs();
 
 		m_isInitialized = true;
 	}
@@ -1626,6 +1630,96 @@ namespace Graphics
 		ThrowIfFailed(commandList->Close());
 
 		return commandList;
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	void GraphicsDevice_DX12::InitializeDownsamplePSOs()
+	{
+		ComputePSODesc psoDesc = {};
+
+		psoDesc.CS = new ComputeShader();
+		CreateShader(L"Shaders\\DownsampleLinear.hlsl", psoDesc.CS);
+		m_linearDownsamplePSO = new ComputePSO();
+		CreateComputePSO(&psoDesc, m_linearDownsamplePSO);
+
+		psoDesc.CS = new ComputeShader();
+		CreateShader(L"Shaders\\DownsampleGamma.hlsl", psoDesc.CS);
+		m_gammaDownsamplePSO = new ComputePSO();
+		CreateComputePSO(&psoDesc, m_gammaDownsamplePSO);
+
+		psoDesc.CS = new ComputeShader();
+		CreateShader(L"Shaders\\DownsampleArray.hlsl", psoDesc.CS);
+		m_arrayDownsamplePSO = new ComputePSO();
+		CreateComputePSO(&psoDesc, m_arrayDownsamplePSO);
+	}
+
+	void GraphicsDevice_DX12::CreateTexture(UINT width, UINT height, UINT depth, DXGI_FORMAT format, UINT levels)
+	{
+		assert(depth == 1 || depth == 6);
+
+		// TODO: finish
+		assert("Not implemented.");
+	}
+
+	void GraphicsDevice_DX12::CreateTextureSRV(Texture* texture, D3D12_SRV_DIMENSION dimension, UINT mostDetailedMip, UINT mipLevels)
+	{
+		const TextureDesc& desc = texture->m_desc;
+		const UINT effectiveMipLevels = (mipLevels > 0) ? mipLevels : (desc.MipLevels - mostDetailedMip);
+		assert(desc.BindFlags & BIND_SHADER_RESOURCE);
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = ConvertFormat(desc.Format);
+		srvDesc.ViewDimension = dimension;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		switch (dimension) {
+		case D3D12_SRV_DIMENSION_TEXTURE2D:
+			srvDesc.Texture2D.MostDetailedMip = mostDetailedMip;
+			srvDesc.Texture2D.MipLevels = effectiveMipLevels;
+			break;
+		case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+			srvDesc.Texture2DArray.MostDetailedMip = mostDetailedMip;
+			srvDesc.Texture2DArray.MipLevels = effectiveMipLevels;
+			srvDesc.Texture2DArray.FirstArraySlice = 0;
+			srvDesc.Texture2DArray.ArraySize = desc.ArraySize;
+			break;
+		case D3D12_SRV_DIMENSION_TEXTURECUBE:
+			assert(desc.ArraySize == 6);
+			srvDesc.TextureCube.MostDetailedMip = mostDetailedMip;
+			srvDesc.TextureCube.MipLevels = effectiveMipLevels;
+			break;
+		default:
+			assert(0);
+		}
+
+		texture->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+		texture->m_srv->ptr = ResourceAllocator->Allocate();
+
+		m_device->CreateShaderResourceView(texture->m_resource.Get(), &srvDesc, *texture->m_srv);
+	}
+
+	void GraphicsDevice_DX12::CreateTextureUAV(Texture* texture, UINT mipSlice)
+	{
+		const TextureDesc& desc = texture->m_desc;
+		assert(desc.BindFlags & BIND_UNORDERED_ACCESS);
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.Format = ConvertFormat(desc.Format);
+		if (desc.ArraySize > 1) {
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+			uavDesc.Texture2DArray.MipSlice = mipSlice;
+			uavDesc.Texture2DArray.FirstArraySlice = 0;
+			uavDesc.Texture2DArray.ArraySize = desc.ArraySize;
+		}
+		else {
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+			uavDesc.Texture2D.MipSlice = mipSlice;
+		}
+
+		texture->m_uav = new D3D12_CPU_DESCRIPTOR_HANDLE;
+		texture->m_uav->ptr = ResourceAllocator->Allocate();
+
+		m_device->CreateUnorderedAccessView(texture->m_resource.Get(), nullptr, &uavDesc, *texture->m_uav);
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2561,7 +2655,7 @@ namespace Graphics
 		resDesc.Format = ConvertFormat(desc.Format);
 		resDesc.Width = desc.Width;
 		resDesc.Height = desc.Height;
-		resDesc.MipLevels = desc.MipLevels;
+		resDesc.MipLevels = (desc.MipLevels) > 0 ? desc.MipLevels : Utility::NumMipmapLevels(desc.Width, desc.Height);
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		resDesc.DepthOrArraySize = (UINT16)desc.ArraySize;
 		resDesc.Alignment = 0;
@@ -3322,7 +3416,7 @@ namespace Graphics
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-	void GraphicsDevice_DX12::TransitionBarrier(GPUResource* resource, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter)
+	void GraphicsDevice_DX12::TransitionBarrier(GPUResource* resource, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource)
 	{
 		if (resource != nullptr)
 		{
@@ -3331,14 +3425,16 @@ namespace Graphics
 				&CD3DX12_RESOURCE_BARRIER::Transition(
 					resource->m_resource.Get(),
 					ConvertResourceStates(stateBefore),
-					ConvertResourceStates(stateAfter)));
+					ConvertResourceStates(stateAfter),
+					subresource));
 		}
 	}
 
-	void GraphicsDevice_DX12::TransitionBarriers(GPUResource* const* resources, UINT numBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter)
+	void GraphicsDevice_DX12::TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT numBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter)
 	{
 		if (resources != nullptr)
 		{
+			assert(numBarriers <= 8);
 			D3D12_RESOURCE_BARRIER barriers[8];
 			for (UINT i = 0; i < numBarriers; ++i)
 			{
@@ -3347,7 +3443,7 @@ namespace Graphics
 				barriers[i].Transition.pResource = resources[i]->m_resource.Get();
 				barriers[i].Transition.StateBefore = ConvertResourceStates(stateBefore);
 				barriers[i].Transition.StateAfter = ConvertResourceStates(stateAfter);
-				barriers[i].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+				barriers[i].Transition.Subresource = subresources == nullptr ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : subresources[i];
 			}
 			GetCommandList()->ResourceBarrier(numBarriers, barriers);
 		}
@@ -3497,7 +3593,7 @@ namespace Graphics
 		{
 			// Load png, jpeg, ...
 			subresources.push_back({});
-			ThrowIfFailed( LoadWICTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources[0]) );
+			ThrowIfFailed( LoadWICTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources[0], 0Ui64, mipMaps) );
 		}
 
 		{
@@ -3532,6 +3628,85 @@ namespace Graphics
 
 			UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*ppTexture)->m_resource.Get(),
 				TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, (UINT)subresources.size(), subresources.data());
+
+			TransitionBarrier(*ppTexture, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_COMMON);
+
+			if (mipMaps)
+				GenerateMipmaps(*ppTexture);
+		}
+	}
+
+	void GraphicsDevice_DX12::GenerateMipmaps(Texture* texture)
+	{
+		Graphics::Texture& tex = *texture;
+
+		assert(tex.m_desc.Width == tex.m_desc.Height);
+		assert(Utility::IsPowerOfTwo(tex.m_desc.Width));
+
+		tex.m_desc.MipLevels = Utility::NumMipmapLevels(tex.m_desc.Width, tex.m_desc.Height);
+		tex.m_desc.BindFlags |= BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
+
+		Graphics::ComputePSO* pso = nullptr;
+
+		TextureDesc desc = tex.m_desc;
+		if (desc.ArraySize == 1 && desc.Format == FORMAT_R8G8B8A8_UNORM_SRGB)
+		{
+			pso = m_gammaDownsamplePSO;
+		}
+		else if (desc.ArraySize > 1 && desc.Format != FORMAT_R8G8B8A8_UNORM_SRGB)
+		{
+			pso = m_arrayDownsamplePSO;
+		}
+		else
+		{
+			assert(desc.ArraySize == 1);
+			pso = m_gammaDownsamplePSO;
+		}
+
+		Texture linearTexture = tex;
+		tex.m_resource->AddRef();
+		if (desc.Format == FORMAT_R8G8B8A8_UNORM_SRGB)
+		{
+			TextureDesc desc = tex.m_desc;
+			desc.Format = FORMAT_R8G8B8A8_UNORM;
+			CreateTexture(desc.Width, desc.Height, 1, DXGI_FORMAT_R8G8B8A8_UNORM, desc.MipLevels);
+
+			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+			GetCommandList()->CopyResource(linearTexture.m_resource.Get(), tex.m_resource.Get());
+			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON));
+		}
+
+		BindComputePSO(pso);
+
+		std::vector<CD3DX12_RESOURCE_BARRIER> preDispatchBarriers{ desc.ArraySize };
+		std::vector<CD3DX12_RESOURCE_BARRIER> postDispatchBarriers{ desc.ArraySize };
+		for (UINT level = 1, levelWidth = desc.Width / 2, levelHeight = desc.Height / 2; level < desc.MipLevels; ++level, levelWidth /= 2, levelHeight /= 2)
+		{
+			CreateTextureSRV(&linearTexture, desc.ArraySize > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D, level - 1, 1);
+			CreateTextureUAV(&linearTexture, level);
+
+			for (UINT arraySlice = 0; arraySlice < desc.ArraySize; ++arraySlice) {
+				const UINT subresourceIndex = D3D12CalcSubresource(level, arraySlice, 0, desc.MipLevels, desc.ArraySize);
+				preDispatchBarriers[arraySlice] = CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, subresourceIndex);
+				postDispatchBarriers[arraySlice] = CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, subresourceIndex);
+			}
+
+			GetCommandList()->ResourceBarrier(desc.ArraySize, preDispatchBarriers.data());
+			BindResource(SHADERSTAGE::CS, &linearTexture, 0);
+			BindUnorderedAccessResource(&linearTexture, 0);
+			Dispatch(std::max(1u, levelWidth / 8), std::max(1u, levelHeight / 8), desc.ArraySize);
+			GetCommandList()->ResourceBarrier(desc.ArraySize, postDispatchBarriers.data());
+		}
+
+		if (tex.m_resource == linearTexture.m_resource)
+		{
+			TransitionBarrier(&linearTexture, RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, RESOURCE_STATE_COMMON);
+		}
+		else
+		{
+			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(tex.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+			GetCommandList()->CopyResource(tex.m_resource.Get(), linearTexture.m_resource.Get());
+			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(tex.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON));
 		}
 	}
 

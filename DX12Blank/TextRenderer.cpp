@@ -432,7 +432,7 @@ namespace TextRenderer
 		std::ifstream file(ss.str());
 		if (file.is_open())
 		{
-			Renderer::GGraphicsDevice->CreateTextureFromFile(ss1.str().c_str(), &m_texture, true);
+			Renderer::GGraphicsDevice->CreateTextureFromFile(ss1.str().c_str(), &m_texture, false);
 			if (m_texture == nullptr)
 			{
 				return;

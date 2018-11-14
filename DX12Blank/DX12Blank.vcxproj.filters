@@ -123,6 +123,9 @@
     <ClInclude Include="Image.h">
       <Filter>Engine\Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>Engine\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -215,10 +218,17 @@
     <None Include="Shaders\Skybox.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Shaders\Equirect2Cube.hlsl">
+    <None Include="Shaders\Equirect2Cube.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
-    </FxCompile>
+    </None>
+    <None Include="Shaders\DownsampleArray.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\DownsampleGamma.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\DownsampleLinear.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

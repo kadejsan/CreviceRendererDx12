@@ -64,7 +64,8 @@ namespace DirectX
         std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
         size_t maxsize = 0,
         _Out_opt_ DDS_ALPHA_MODE* alphaMode = nullptr,
-        _Out_opt_ bool* isCubeMap = nullptr);
+        _Out_opt_ bool* isCubeMap = nullptr,
+		bool genMipMaps = false);
 
     // Extended version
     HRESULT __cdecl LoadDDSTextureFromMemoryEx(

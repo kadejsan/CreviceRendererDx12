@@ -627,14 +627,15 @@ HRESULT DirectX::LoadWICTextureFromFile(
     ID3D12Resource** texture,
     std::unique_ptr<uint8_t[]>& wicData,
     D3D12_SUBRESOURCE_DATA& subresource,
-    size_t maxsize)
+    size_t maxsize,
+	bool genMipMaps)
 {
     return LoadWICTextureFromFileEx(
         d3dDevice,
         fileName,
         maxsize,
-        D3D12_RESOURCE_FLAG_NONE,
-        WIC_LOADER_DEFAULT,
+        genMipMaps ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE,
+        genMipMaps ? WIC_LOADER_MIP_AUTOGEN | WIC_LOADER_MIP_RESERVE : WIC_LOADER_DEFAULT,
         texture,
         wicData,
         subresource);

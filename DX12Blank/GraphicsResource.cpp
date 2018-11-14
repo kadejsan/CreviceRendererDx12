@@ -11,7 +11,7 @@ namespace Graphics
 
 	GPUResource::~GPUResource()
 	{
-		m_resource.Reset();
+		SAFE_RELEASE(m_resource);
 		SAFE_DELETE(m_srv);
 		for (auto& x : m_additionalSRVs)
 		{

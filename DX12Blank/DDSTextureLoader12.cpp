@@ -1461,14 +1461,15 @@ HRESULT DirectX::LoadDDSTextureFromFile(
     std::vector<D3D12_SUBRESOURCE_DATA>& subresources,
     size_t maxsize,
     DDS_ALPHA_MODE* alphaMode,
-    bool* isCubeMap)
+    bool* isCubeMap,
+	bool genMipMaps)
 {
     return LoadDDSTextureFromFileEx(
         d3dDevice,
         fileName,
         maxsize,
-        D3D12_RESOURCE_FLAG_NONE,
-        DDS_LOADER_DEFAULT,
+        genMipMaps ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE,
+        genMipMaps ? DDS_LOADER_MIP_RESERVE : DDS_LOADER_DEFAULT,
         texture,
         ddsData,
         subresources,

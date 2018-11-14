@@ -12,7 +12,6 @@ PSOCache::PSOCache()
 
 PSOCache::~PSOCache()
 {
-
 }
 
 void PSOCache::Initialize(Graphics::GraphicsDevice& device)

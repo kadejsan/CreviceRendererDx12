@@ -154,6 +154,7 @@
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="TextRenderer.h" />
     <ClInclude Include="Types.h" />
+    <ClInclude Include="Utils.h" />
     <ClInclude Include="WICTextureLoader12.h" />
     <ClInclude Include="Win32Application.h" />
   </ItemGroup>
@@ -207,6 +208,17 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Equirect2Cube.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\DownsampleGamma.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\DownsampleArray.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\DownsampleLinear.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
