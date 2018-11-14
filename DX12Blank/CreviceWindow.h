@@ -7,6 +7,7 @@
 #include "SamplerCache.h"
 #include "RenderObject.h"
 #include "Renderer.h"
+#include "RenderTarget.h"
 
 class CubeMesh;
 class Material;
@@ -88,4 +89,6 @@ private:
 	Texture2D*		m_envTextureEquirect;
 	Texture2D*		m_irradianceMap;
 	Texture2D*		m_spBRDFLut;
+
+	RenderTarget	m_frameBuffer;
 };

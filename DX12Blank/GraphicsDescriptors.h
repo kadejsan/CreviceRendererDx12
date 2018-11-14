@@ -306,6 +306,12 @@ namespace Graphics
 		INDEXFORMAT_32BIT,
 	};
 
+	enum CLEAR_FLAG
+	{
+		CLEAR_DEPTH = 0x1L,
+		CLEAR_STENCIL = 0x2L,
+	};
+
 	enum BIND_FLAG
 	{
 		BIND_VERTEX_BUFFER = 0x1L,
@@ -434,6 +440,21 @@ namespace Graphics
 			SysMem(nullptr),
 			SysMemPitch(0),
 			SysMemSlicePitch(0)
+		{}
+	};
+
+	struct Rect
+	{
+		LONG left;
+		LONG top;
+		LONG right;
+		LONG bottom;
+
+		Rect() :
+			left(0),
+			top(0),
+			right(0),
+			bottom(0)
 		{}
 	};
 

@@ -29,7 +29,15 @@ namespace Graphics
 
 		// Gpu Api Interface
 		virtual void PresentBegin() = 0;
+		virtual void SetBackBuffer() = 0;
 		virtual void PresentEnd() = 0;
+
+		virtual void BindViewports(UINT numViewports, const ViewPort *viewports) = 0;
+		virtual void SetScissorRects(UINT numRects, const Rect* rects) = 0;
+		virtual void BindRenderTargets(UINT numViews, Texture2D* const *renderTargets, Texture2D* depthStencilTexture, int arrayIndex = -1) = 0;
+
+		virtual void ClearRenderTarget(Texture* texture, const FLOAT colorRGBA[4], int arrayIndex = -1) = 0;
+		virtual void ClearDepthStencil(Texture2D* texture, UINT clearFlags, FLOAT depth, UINT8 stencil, int arrayIndex = -1) = 0;	
 
 		virtual void BindVertexBuffers(GPUBuffer *const* vertexBuffers, int slot, int count, const UINT* strides, const UINT* offsets = nullptr) = 0;
 		virtual void BindIndexBuffer(GPUBuffer* indexBuffer, const FORMAT format, UINT offset) = 0;
@@ -37,6 +45,7 @@ namespace Graphics
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) = 0;
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
+		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) = 0;
 		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) = 0;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) = 0;
 
@@ -68,6 +77,7 @@ namespace Graphics
 		virtual void GenerateMipmaps(Texture* texture) = 0;
 		virtual void CopyTexture(Texture* dst, Texture* src) = 0;
 		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) = 0;
+		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) = 0;
 
 		virtual void BeginProfilerBlock(const char* name) = 0;
 		virtual void EndProfilerBlock() = 0;

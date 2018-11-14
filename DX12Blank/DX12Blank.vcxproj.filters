@@ -126,6 +126,15 @@
     <ClInclude Include="Utils.h">
       <Filter>Engine\Utils</Filter>
     </ClInclude>
+    <ClInclude Include="RenderTarget.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="DepthTarget.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsAPI.h">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -203,6 +212,12 @@
     <ClCompile Include="Lib\stb\src\libstb.c">
       <Filter>Engine\Lib</Filter>
     </ClCompile>
+    <ClCompile Include="RenderTarget.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="DepthTarget.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SimpleColor.hlsl">
@@ -237,6 +252,9 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\Irrmap.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\Tonemapping.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

@@ -2280,7 +2280,7 @@ namespace Graphics
 		ThrowIfFailed(cmdList->Reset(cmdAllocator.Get(), nullptr));
 
 		ID3D12DescriptorHeap* heaps[] = {
-			GetFrameResources().ResourceDescriptorsGPU->m_heapGPU.Get(), GetFrameResources().SamplerDescriptorsGPU->m_heapGPU.Get()
+			frameResources.ResourceDescriptorsGPU->m_heapGPU.Get(), frameResources.SamplerDescriptorsGPU->m_heapGPU.Get()
 		};
 		cmdList->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
@@ -2290,9 +2290,15 @@ namespace Graphics
 		D3D12_CPU_DESCRIPTOR_HANDLE nullDescriptors[] = {
 			*m_nullSampler, *m_nullCBV, *m_nullSRV, *m_nullUAV
 		};
-		GetFrameResources().ResourceDescriptorsGPU->Reset(m_device, nullDescriptors);
-		GetFrameResources().SamplerDescriptorsGPU->Reset(m_device, nullDescriptors);
-		GetFrameResources().ResourceBuffer->Clear();
+		frameResources.ResourceDescriptorsGPU->Reset(m_device, nullDescriptors);
+		frameResources.SamplerDescriptorsGPU->Reset(m_device, nullDescriptors);
+		frameResources.ResourceBuffer->Clear();
+	}
+
+	void GraphicsDevice_DX12::SetBackBuffer()
+	{
+		FrameResources& frameResources = GetFrameResources();
+		auto cmdList = frameResources.GetCommandList();
 
 		cmdList->ResourceBarrier(
 			1,
@@ -2313,10 +2319,10 @@ namespace Graphics
 			// Record commands.
 			const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 			cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-			cmdList->ClearDepthStencilView(GetDSVHeap()->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+			//cmdList->ClearDepthStencilView(GetDSVHeap()->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 			// Set the back buffer as the render target.
-			cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+			cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);//&m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 		}
 	}
 
@@ -2342,6 +2348,117 @@ namespace Graphics
 		ThrowIfFailed(GetSwapChain()->Present(st_useVsync, 0));
 
 		MoveToNextFrame();
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	void GraphicsDevice_DX12::BindViewports(UINT numViewports, const ViewPort *viewports)
+	{
+		assert(numViewports <= 6);
+
+		D3D12_VIEWPORT d3dViewPorts[6];
+		for (UINT i = 0; i < numViewports; ++i)
+		{
+			d3dViewPorts[i].TopLeftX = viewports[i].TopLeftX;
+			d3dViewPorts[i].TopLeftY = viewports[i].TopLeftY;
+			d3dViewPorts[i].Width = viewports[i].Width;
+			d3dViewPorts[i].Height = viewports[i].Height;
+			d3dViewPorts[i].MinDepth = viewports[i].MinDepth;
+			d3dViewPorts[i].MaxDepth = viewports[i].MaxDepth;
+		}
+		GetCommandList()->RSSetViewports(numViewports, d3dViewPorts);
+	}
+
+	void GraphicsDevice_DX12::SetScissorRects(UINT numRects, const Rect* rects)
+	{
+		assert(rects != nullptr);
+		assert(numRects <= 8);
+
+		D3D12_RECT pRects[8];
+		for (UINT i = 0; i < numRects; ++i)
+		{
+			pRects[i].bottom = rects[i].bottom;
+			pRects[i].left = rects[i].left;
+			pRects[i].right = rects[i].right;
+			pRects[i].top = rects[i].top;
+		}
+		GetCommandList()->RSSetScissorRects(numRects, pRects);
+	}
+
+	void GraphicsDevice_DX12::BindRenderTargets(UINT numViews, Texture2D* const *renderTargets, Texture2D* depthStencilTexture, int arrayIndex /*= -1*/)
+	{
+		assert(numViews <= 8);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE descriptors[8] = {};
+		for (UINT i = 0; i < numViews; ++i)
+		{
+			if (renderTargets[i] != nullptr)
+			{
+				if (arrayIndex < 0 || depthStencilTexture->m_additionalRTVs.empty())
+				{
+					descriptors[i] = *renderTargets[i]->m_rtv;
+				}
+				else
+				{
+					assert(depthStencilTexture->m_additionalRTVs.size() > static_cast<size_t>(arrayIndex) && "Invalid rendertarget arrayIndex!");
+					descriptors[i] = *renderTargets[i]->m_additionalRTVs[arrayIndex];
+				}
+			}
+		}
+
+		D3D12_CPU_DESCRIPTOR_HANDLE* DSV = nullptr;
+		if (depthStencilTexture != nullptr)
+		{
+			if (arrayIndex < 0 || depthStencilTexture->m_additionalDSVs.empty())
+			{
+				DSV = depthStencilTexture->m_dsv;
+			}
+			else
+			{
+				assert(depthStencilTexture->m_additionalDSVs.size() > static_cast<size_t>(arrayIndex) && "Invalid depthstencil arrayIndex!");
+				DSV = depthStencilTexture->m_additionalDSVs[arrayIndex];
+			}
+		}
+
+		GetCommandList()->OMSetRenderTargets(numViews, descriptors, FALSE, DSV);
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	void GraphicsDevice_DX12::ClearRenderTarget(Texture* texture, const FLOAT colorRGBA[4], int arrayIndex /*= -1*/)
+	{
+		if (texture != nullptr)
+		{
+			if (arrayIndex < 0)
+			{
+				GetCommandList()->ClearRenderTargetView(*texture->m_rtv, colorRGBA, 0, nullptr);
+			}
+			else
+			{
+				GetCommandList()->ClearRenderTargetView(*texture->m_additionalRTVs[arrayIndex], colorRGBA, 0, nullptr);
+			}
+		}
+	}
+
+	void GraphicsDevice_DX12::ClearDepthStencil(Texture2D* texture, UINT clearFlags, FLOAT depth, UINT8 stencil, int arrayIndex /*= -1*/)
+	{
+		if (texture != nullptr)
+		{
+			UINT _flags = 0;
+			if (clearFlags & CLEAR_DEPTH)
+				_flags |= D3D12_CLEAR_FLAG_DEPTH;
+			if (clearFlags & CLEAR_STENCIL)
+				_flags |= D3D12_CLEAR_FLAG_STENCIL;
+
+			if (arrayIndex < 0)
+			{
+				GetCommandList()->ClearDepthStencilView(*texture->m_dsv, (D3D12_CLEAR_FLAGS)_flags, depth, stencil, 0, nullptr);
+			}
+			else
+			{
+				GetCommandList()->ClearDepthStencilView(*texture->m_additionalDSVs[arrayIndex], (D3D12_CLEAR_FLAGS)_flags, depth, stencil, 0, nullptr);
+			}
+		}
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -2419,6 +2536,17 @@ namespace Graphics
 				assert(resource->m_additionalSRVs.size() > static_cast<size_t>(arrayIndex) && "Invalid arrayIndex!");
 				GetFrameResources().ResourceDescriptorsGPU->Update(stage, GPU_RESOURCE_HEAP_CBV_COUNT + slot,
 					resource->m_additionalSRVs[arrayIndex], m_device, GetCommandList());
+			}
+		}
+	}
+
+	void GraphicsDevice_DX12::BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count)
+	{
+		if (resources != nullptr)
+		{
+			for (int i = 0; i < count; ++i)
+			{
+				BindResource(stage, resources[i], slot + i, -1);
 			}
 		}
 	}
@@ -2698,7 +2826,7 @@ namespace Graphics
 		optimizedClearValue.Color[1] = 0;
 		optimizedClearValue.Color[2] = 0;
 		optimizedClearValue.Color[3] = 0;
-		optimizedClearValue.DepthStencil.Depth = 0.0f;
+		optimizedClearValue.DepthStencil.Depth = 1.0f;
 		optimizedClearValue.DepthStencil.Stencil = 0;
 		optimizedClearValue.Format = resDesc.Format;
 		if (optimizedClearValue.Format == DXGI_FORMAT_R16_TYPELESS)
@@ -2708,6 +2836,10 @@ namespace Graphics
 		else if (optimizedClearValue.Format == DXGI_FORMAT_R32_TYPELESS)
 		{
 			optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+		}
+		else if (optimizedClearValue.Format == DXGI_FORMAT_R24G8_TYPELESS)
+		{
+			optimizedClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		}
 		else if (optimizedClearValue.Format == DXGI_FORMAT_R32G8X24_TYPELESS)
 		{
@@ -2892,6 +3024,7 @@ namespace Graphics
 				break;
 			case FORMAT_R32G8X24_TYPELESS:
 				depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+				break;
 			default:
 				depthStencilViewDesc.Format = ConvertFormat((*texture2D)->m_desc.Format);
 				break;
@@ -3763,6 +3896,29 @@ namespace Graphics
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		GetCommandList()->ResourceBarrier(1, &barrier);
+	}
+
+	void GraphicsDevice_DX12::MSAAResolve(Texture2D* dst, Texture2D* src)
+	{
+		const CD3DX12_RESOURCE_BARRIER preResolveBarriers[] = {
+			CD3DX12_RESOURCE_BARRIER::Transition(src->m_resource.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE),
+			CD3DX12_RESOURCE_BARRIER::Transition(dst->m_resource.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST)
+		};
+		const CD3DX12_RESOURCE_BARRIER postResolveBarriers[] = {
+			CD3DX12_RESOURCE_BARRIER::Transition(src->m_resource.Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET),
+			CD3DX12_RESOURCE_BARRIER::Transition(dst->m_resource.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+		};
+
+		if (src->m_resource != dst->m_resource) 
+		{
+			assert(src->m_desc.Format == dst->m_desc.Format);
+
+			FORMAT format = dst->m_desc.Format;
+
+			GetCommandList()->ResourceBarrier(2, preResolveBarriers);
+			GetCommandList()->ResolveSubresource(dst->m_resource.Get(), 0, src->m_resource.Get(), 0, ConvertFormat(format));
+			GetCommandList()->ResourceBarrier(2, postResolveBarriers);
+		}
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

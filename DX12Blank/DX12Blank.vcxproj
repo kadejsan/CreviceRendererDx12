@@ -131,11 +131,13 @@
     <ClInclude Include="Color.h" />
     <ClInclude Include="CreviceWindow.h" />
     <ClInclude Include="DDSTextureLoader12.h" />
+    <ClInclude Include="DepthTarget.h" />
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EngineTimer.h" />
+    <ClInclude Include="GraphicsAPI.h" />
     <ClInclude Include="GraphicsDevice_DX12.h" />
     <ClInclude Include="DXHelper.h" />
     <ClInclude Include="GraphicsDescriptors.h" />
@@ -149,6 +151,7 @@
     <ClInclude Include="PSOCache.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderObject.h" />
+    <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="SamplerCache.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StringUtils.h" />
@@ -164,6 +167,7 @@
     <ClCompile Include="Color.cpp" />
     <ClCompile Include="CreviceWindow.cpp" />
     <ClCompile Include="DDSTextureLoader12.cpp" />
+    <ClCompile Include="DepthTarget.cpp" />
     <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="D3DUtils.cpp" />
@@ -179,6 +183,7 @@
     <ClCompile Include="PSOCache.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderObject.cpp" />
+    <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="SamplerCache.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
@@ -234,6 +239,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Spbrdf.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Tonemapping.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -8,7 +8,7 @@
 #include "Camera.h"
 #include "TextRenderer.h"
 
-#define PBR_MODEL
+#define PBR_MODEL 1
 
 CreviceWindow::CreviceWindow( std::string name )
 	: BaseWindow( name )
@@ -26,8 +26,10 @@ void CreviceWindow::OnInit()
 
 	m_psoCache.Initialize(*Renderer::GGraphicsDevice);
 	m_samplerCache.Initialize(*Renderer::GGraphicsDevice);
-	
+
 	GetDevice().PresentBegin();
+	m_frameBuffer.Initialize(m_width, m_height, true, Renderer::RTFormat_HDR);
+	GetDevice().SetBackBuffer();
 	InitializeConstantBuffers();
 	InitializeTextures();
 	InitializeMesh();
@@ -53,20 +55,25 @@ void CreviceWindow::OnRender()
 	{
 		ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
-#ifdef PBR_MODEL
+#if PBR_MODEL
 		if (m_wireframe)
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRWireframe));
 		else
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRSolid));
 
-		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Albedo], 0);
-		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Normal], 1);
-		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Roughness], 2);
-		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Metalness], 3);
-		Renderer::GGraphicsDevice->BindResource(PS, m_envTexture, 4);
-		Renderer::GGraphicsDevice->BindResource(PS, m_irradianceMap, 5);
-		Renderer::GGraphicsDevice->BindResource(PS, m_spBRDFLut, 6);
+		GPUResource* textures[] = { 
+			m_textures[ETT_Albedo],
+			m_textures[ETT_Normal],
+			m_textures[ETT_Roughness],
+			m_textures[ETT_Metalness],
+			m_envTexture,
+			m_irradianceMap,
+			m_spBRDFLut
+		};
+		GetDevice().BindResources(PS, textures, 0, 7);
 		GetDevice().BindSampler(SHADERSTAGE::PS, m_samplerCache.GetSamplerState(eSamplerState::AnisotropicWrap), 0);
+
+		m_frameBuffer.Activate();
 
 		UpdateConstantBuffer(m_model);
 		m_model.m_mesh->Draw(GetDevice(), m_model.m_world, GetCamera()->m_frustum);
@@ -77,8 +84,18 @@ void CreviceWindow::OnRender()
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxSolid));
 
 		UpdateConstantBuffer(m_skybox);
-		Renderer::GGraphicsDevice->BindResource(PS, m_envTexture, 0);
+		GetDevice().BindResource(PS, m_envTexture, 0);
 		m_skybox.m_mesh->Draw(GetDevice(), m_skybox.m_world, GetCamera()->m_frustum);
+
+		m_frameBuffer.Deactivate();
+
+		GetDevice().SetBackBuffer();
+
+		GetDevice().BindResource(PS, m_frameBuffer.GetTexture(), 0);
+		GetDevice().BindSampler(SHADERSTAGE::PS, m_samplerCache.GetSamplerState(eSamplerState::LinearClamp), 0);
+		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::TonemappingReinhard));
+		GetDevice().DrawInstanced(3, 1, 0, 0);
+
 #else
 		if (m_wireframe)
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SimpleColorWireframe));
@@ -111,6 +128,10 @@ void CreviceWindow::OnDestroy()
 		delete m_textures[i];
 
 	delete m_envTexture;
+	delete m_envTextureEquirect;
+	delete m_envTextureUnfiltered;
+	delete m_irradianceMap;
+	delete m_spBRDFLut;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

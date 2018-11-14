@@ -16,6 +16,7 @@ enum eGPSO
 	PBRWireframe,
 	SkyboxSolid,
 	SkyboxWireframe,
+	TonemappingReinhard,
 
 	GPSO_MAX,
 };

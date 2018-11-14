@@ -41,7 +41,15 @@ namespace Graphics
 	public:
 		// GpuApi interface
 		virtual void PresentBegin() override;
+		virtual void SetBackBuffer() override;
 		virtual void PresentEnd() override;
+
+		virtual void BindViewports(UINT numViewports, const ViewPort *viewports) override;
+		virtual void SetScissorRects(UINT numRects, const Rect* rects) override;
+		virtual void BindRenderTargets(UINT numViews, Texture2D* const *renderTargets, Texture2D* depthStencilTexture, int arrayIndex = -1) override;
+
+		virtual void ClearRenderTarget(Texture* texture, const FLOAT colorRGBA[4], int arrayIndex = -1) override;
+		virtual void ClearDepthStencil(Texture2D* texture, UINT clearFlags, FLOAT depth, UINT8 stencil, int arrayIndex = -1) override;
 
 		virtual void BindVertexBuffers( GPUBuffer *const* vertexBuffers, int slot, int count, const UINT* strides, const UINT* offsets = nullptr) override;
 		virtual void BindIndexBuffer(GPUBuffer* indexBuffer, const FORMAT format, UINT offset) override;
@@ -49,6 +57,7 @@ namespace Graphics
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
+		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
 		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
 
@@ -80,6 +89,7 @@ namespace Graphics
 		virtual void GenerateMipmaps(Texture* texture) override;
 		virtual void CopyTexture(Texture* dst, Texture* src) override;
 		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) override;
+		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) override;
 
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();

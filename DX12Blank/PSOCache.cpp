@@ -2,6 +2,7 @@
 #include "PSOCache.h"
 #include "GraphicsDescriptors.h"
 #include "GraphicsResource.h"
+#include "Renderer.h"
 
 using namespace Graphics;
 
@@ -50,10 +51,10 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.PT = PRIMITIVETOPOLOGY::TRIANGLELIST;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.NumRTs = 1;
-	psoDesc.RTFormats[0] = device.GetBackBufferFormat();
+	psoDesc.RTFormats[0] = Renderer::RTFormat_HDR;
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.SampleDesc.Quality = 0;
-	psoDesc.DSFormat = device.GetDepthStencilFormat();
+	psoDesc.DSFormat = Renderer::DSFormat_Full;
 
 	m_cacheGraphics[SimpleColorSolid] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleColorSolid].get());
@@ -107,6 +108,20 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
 	m_cacheGraphics[SkyboxWireframe] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SkyboxWireframe].get());
+
+	// Tonemapping
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\Tonemapping.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\Tonemapping.hlsl", psoDesc.PS);
+	psoDesc.IL = nullptr;
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	psoDesc.RS->m_desc.FrontCounterClockwise = true;
+	psoDesc.RTFormats[0] = device.GetBackBufferFormat();
+	psoDesc.DSS->m_desc.DepthEnable = false;
+	psoDesc.DSFormat = FORMAT_UNKNOWN;
+	m_cacheGraphics[TonemappingReinhard] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[TonemappingReinhard].get());
 }
 
 void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)

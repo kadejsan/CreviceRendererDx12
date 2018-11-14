@@ -117,9 +117,14 @@ uint querySpecularTextureLevels()
 	return levels;
 }
 
+float4 GammaToLinear(float4 c)
+{
+	return float4(pow(c.rgb, 2.2f), c.a);
+}
+
 float4 ps_main(VertexOut pin) : SV_Target
 {
-	float4 albedo = Albedo.Sample(Sampler, pin.TexCoord);
+	float4 albedo = GammaToLinear(Albedo.Sample(Sampler, pin.TexCoord));
 	float roughness = Roughness.Sample(Sampler, pin.TexCoord).r;
 	float metalness = Metalness.Sample(Sampler, pin.TexCoord).r;
 
