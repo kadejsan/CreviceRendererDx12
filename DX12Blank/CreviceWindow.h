@@ -40,6 +40,7 @@ private:
 	void InitializeRenderObjects();
 	void InitializeTextures();
 	void InitializeMesh();
+	void InitializeConstantBuffers();
 	void UpdateConstantBuffer(const RenderObject& renderObject);
 
 	struct ObjectConstants
@@ -48,6 +49,20 @@ private:
 		float4x4 WorldViewProj = MathHelper::Identity4x4();
 	};
 	Graphics::GPUBuffer*		m_objCB;
+
+	static const int MaxLights = 3;
+	struct Light
+	{
+		float3 LightDirection;
+		float  LightRadiance;
+	};
+	struct ShadingConstants
+	{
+		float4 EyePosition = float4(0, 0, 0, 0);
+		Light  Lights[MaxLights];
+		UINT   LightsCount;
+	};
+	Graphics::GPUBuffer*		m_shadingCB;
 
 	enum ETextureType
 	{

@@ -11,6 +11,8 @@ enum eSamplerState
 {
 	LinearClamp,
 	LinearWrap,
+	AnisotropicClamp,
+	AnisotropicWrap,
 
 	SS_MAX,
 };

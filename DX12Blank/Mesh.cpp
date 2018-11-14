@@ -61,7 +61,7 @@ void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UIN
 	}
 }
 
-void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size)
+void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, FORMAT format)
 {
 	device.CreateBlob(size, &m_indexBufferCPU);
 	CopyMemory(m_indexBufferCPU.m_blob->GetBufferPointer(), data, size);
@@ -74,7 +74,7 @@ void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT
 		bd.ByteWidth = size;
 		bd.BindFlags = BIND_INDEX_BUFFER;
 		bd.CpuAccessFlags = 0;
-		bd.Format = FORMAT_R16_UINT;
+		bd.Format = format;
 		bd.StructureByteStride = sizeof(UINT16);
 
 		m_indexBufferGPU.m_desc = bd;
@@ -141,7 +141,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 	UINT stride = sizeof(Vertex);
 	CreateVertexBuffers(device, vertices.data(), vertices.size()*stride, stride);
 
-	std::vector<UINT16> indices;
+	std::vector<UINT> indices;
 	indices.reserve(mesh->mNumFaces * 3);
 
 	for (UINT i = 0; i < mesh->mNumFaces; ++i)
@@ -152,7 +152,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 		indices.push_back(mesh->mFaces[i].mIndices[2]);
 	}
 
-	CreateIndexBuffers(device, indices.data(), indices.size() * sizeof(UINT16));
+	CreateIndexBuffers(device, indices.data(), indices.size() * sizeof(UINT), FORMAT_R32_UINT);
 
 	Submesh submesh;
 	submesh.IndexCount = (UINT)indices.size();

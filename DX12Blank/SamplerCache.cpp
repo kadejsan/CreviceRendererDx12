@@ -35,10 +35,19 @@ void SamplerCache::Initialize(Graphics::GraphicsDevice& device)
 	samplerDesc.MaxLOD = FLOAT32_MAX;
 	m_cache[LinearClamp] = std::make_unique<Sampler>();
 	device.CreateSamplerState(&samplerDesc, m_cache[LinearClamp].get());
+	
+	samplerDesc.Filter = FILTER_ANISOTROPIC;
+	m_cache[AnisotropicClamp] = std::make_unique<Sampler>();
+	device.CreateSamplerState(&samplerDesc, m_cache[AnisotropicClamp].get());
 
+	samplerDesc.Filter = FILTER_MIN_MAG_MIP_LINEAR;
 	samplerDesc.AddressU = TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressW = TEXTURE_ADDRESS_WRAP;
 	m_cache[LinearWrap] = std::make_unique<Sampler>();
 	device.CreateSamplerState(&samplerDesc, m_cache[LinearWrap].get());
+
+	samplerDesc.Filter = FILTER_ANISOTROPIC;
+	m_cache[AnisotropicWrap] = std::make_unique<Sampler>();
+	device.CreateSamplerState(&samplerDesc, m_cache[AnisotropicWrap].get());
 }
