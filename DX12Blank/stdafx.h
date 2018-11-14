@@ -29,6 +29,7 @@
 // std
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <algorithm>
 #include <cassert>

@@ -130,6 +130,15 @@ LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM
 		}
 		return 0;
 
+		case WM_MOUSEWHEEL:
+		{
+			if (window)
+			{
+				window->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
+			}
+		}
+		return 0;
+
 		case WM_PAINT:
 		{
 			if( window )

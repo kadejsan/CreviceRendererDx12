@@ -38,7 +38,7 @@ ComPtr<ID3DBlob> D3DUtils::CompileShader(
 		entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors);
 
 	if (errors != nullptr)
-		OutputDebugStringA((char*)errors->GetBufferPointer());
+		LOG((char*)errors->GetBufferPointer());
 
 	ThrowIfFailed(hr);
 

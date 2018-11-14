@@ -740,6 +740,7 @@ namespace GraphicsTypes
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	GraphicsDevice_DX12::GraphicsDevice_DX12()
+		: m_currentFence( 0 )
 	{
 	}
 
@@ -809,10 +810,13 @@ namespace GraphicsTypes
 			m_cbvSrvUavDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 			for (int i = 0; i < st_frameCount; ++i)
-				m_commandAllocator[i] = CreateCommandAllocator(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-			m_commandList = CreateCommandList(m_device, m_commandAllocator[m_frameIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
+			{
+				FrameResources& frameResources = Frames[i];
+				frameResources.m_commandAllocator = CreateCommandAllocator(m_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+				frameResources.m_commandList = CreateCommandList(m_device, frameResources.m_commandAllocator, D3D12_COMMAND_LIST_TYPE_DIRECT);
+				UpdateRenderTargetViews(m_device, m_swapChain, m_rtvHeap, i);
+			}
 
-			UpdateRenderTargetViews(m_device, m_swapChain, m_rtvHeap);
 			UpdateDepthStencil(m_device, m_dsvHeap, window->GetWidth(), window->GetHeight());
 			UpdateViewportAndScissor(window->GetWidth(), window->GetHeight());
 
@@ -1539,19 +1543,16 @@ namespace GraphicsTypes
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-	void GraphicsDevice_DX12::UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr <ID3D12DescriptorHeap> descriptorHeap)
+	void GraphicsDevice_DX12::UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT n)
 	{
 		auto rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), n, rtvDescriptorSize);
 
 		// Create a RTV for each frame
-		for (UINT32 n = 0; n < st_frameCount; ++n)
-		{
-			ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
-			m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
-			rtvHandle.Offset(1, m_rtvDescriptorSize);
-		}
+		ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&Frames[n].m_backBuffer)));
+		m_device->CreateRenderTargetView(Frames[n].m_backBuffer.Get(), nullptr, rtvHandle);
+		rtvHandle.Offset(1, m_rtvDescriptorSize);
 	}
 
 	void GraphicsDevice_DX12::UpdateDepthStencil(ComPtr<ID3D12Device> device, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT backBufferWidth, UINT backBufferHeight)
@@ -1608,69 +1609,74 @@ namespace GraphicsTypes
 	void GraphicsDevice_DX12::Flush()
 	{
 		// Schedule a Signal command in the queue.
-		ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValues[m_frameIndex]));
+		ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), GetFenceValue()));
 
 		// Wait until the fence has been processed.
-		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+		ThrowIfFailed(m_fence->SetEventOnCompletion(GetFenceValue(), m_fenceEvent));
 		WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
 
 		// Increment the fence value for the current frame.
-		m_fenceValues[m_frameIndex]++;
+		Frames[m_frameIndex].m_fenceValue++;
 	}
 
 	void GraphicsDevice_DX12::MoveToNextFrame()
 	{
 		// Schedule a Signal command in the queue.
-		const UINT64 currentFenceValue = m_fenceValues[m_frameIndex];
+		const UINT64 currentFenceValue = GetFenceValue();
 		ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), currentFenceValue));
 
 		// Update the frame index.
 		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
 		// If the next frame is not ready to be rendered yet, wait until it is ready.
-		if (m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
+		if (m_fence->GetCompletedValue() < GetFenceValue())
 		{
-			ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+			ThrowIfFailed(m_fence->SetEventOnCompletion(GetFenceValue(), m_fenceEvent));
 			WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
 		}
 
 		// Set the fence value for the next frame.
-		m_fenceValues[m_frameIndex] = currentFenceValue + 1;
+		Frames[m_frameIndex].m_fenceValue = currentFenceValue + 1;
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 	void GraphicsDevice_DX12::PresentBegin()
 	{
-		ThrowIfFailed(GetCommandAllocator()->Reset());
+		FrameResources& frameResources = GetFrameResources();
+		auto cmdAllocator = frameResources.GetCommandAllocator();
+		auto cmdList = frameResources.GetCommandList();
 
-		ThrowIfFailed(GetCommandList()->Reset(GetCommandAllocator().Get(), nullptr));
+		ThrowIfFailed(cmdAllocator->Reset());
+
+		ThrowIfFailed(cmdList->Reset(cmdAllocator.Get(), nullptr));
 
 		ID3D12DescriptorHeap* heaps[] = {
 			GetFrameResources().ResourceDescriptorsGPU->m_heapGPU.Get(), GetFrameResources().SamplerDescriptorsGPU->m_heapGPU.Get()
 		};
-		GetCommandList()->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
+		cmdList->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
 
-		GetCommandList()->SetGraphicsRootSignature(m_graphicsRootSig.Get());
-		GetCommandList()->SetComputeRootSignature(m_computeRootSig.Get());
+		cmdList->SetGraphicsRootSignature(m_graphicsRootSig.Get());
+		cmdList->SetComputeRootSignature(m_computeRootSig.Get());
 
 		D3D12_CPU_DESCRIPTOR_HANDLE nullDescriptors[] = {
 			*m_nullSampler, *m_nullCBV, *m_nullSRV, *m_nullUAV
 		};
 		GetFrameResources().ResourceDescriptorsGPU->Reset(m_device, nullDescriptors);
 		GetFrameResources().SamplerDescriptorsGPU->Reset(m_device, nullDescriptors);
+		GetFrameResources().ResourceBuffer->Clear();
 
-		GetCommandList()->ResourceBarrier(
+		cmdList->ResourceBarrier(
 			1,
 			&CD3DX12_RESOURCE_BARRIER::Transition(
-				GetCurrentRenderTarget().Get(),
+				frameResources.GetRenderTarget().Get(),
 				D3D12_RESOURCE_STATE_PRESENT,
 				D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 		{
 			// Set the viewport and scissor rect.  This needs to be reset whenever the command list is reset.
-			GetCommandList()->RSSetViewports(1, &m_screenViewport);
-			GetCommandList()->RSSetScissorRects(1, &m_scissorRect);
+			cmdList->RSSetViewports(1, &m_screenViewport);
+			cmdList->RSSetScissorRects(1, &m_scissorRect);
 		}
 
 		{
@@ -1678,27 +1684,30 @@ namespace GraphicsTypes
 
 			// Record commands.
 			const float clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-			GetCommandList()->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-			GetCommandList()->ClearDepthStencilView(GetDSVHeap()->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+			cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+			cmdList->ClearDepthStencilView(GetDSVHeap()->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 			// Set the back buffer as the render target.
-			GetCommandList()->OMSetRenderTargets(1, &rtvHandle, FALSE, &m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+			cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, &m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 		}
 	}
 
 	void GraphicsDevice_DX12::PresentEnd()
 	{
-		GetCommandList()->ResourceBarrier(
+		FrameResources& frameResources = GetFrameResources();
+		auto cmdList = frameResources.GetCommandList();
+
+		cmdList->ResourceBarrier(
 			1,
 			&CD3DX12_RESOURCE_BARRIER::Transition(
-			GetCurrentRenderTarget().Get(),
+				frameResources.GetRenderTarget().Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			D3D12_RESOURCE_STATE_PRESENT) );
 
-		ThrowIfFailed(GetCommandList()->Close());
+		ThrowIfFailed(cmdList->Close());
 
 		// Execute command list
-		ID3D12CommandList* ppCommandLists[] = { GetCommandList().Get() };
+		ID3D12CommandList* ppCommandLists[] = { cmdList.Get() };
 		GetCommandQueue()->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 		// Present
@@ -1839,7 +1848,7 @@ namespace GraphicsTypes
 			// #TODO: This is not thread safe
 			UINT8* dest = BufferUploader->Allocate(desc.ByteWidth, alignment);
 			memcpy(dest, initialData->SysMem, desc.ByteWidth);
-			m_commandList->CopyBufferRegion(buffer->m_resource.Get(), 0, BufferUploader->m_resource.Get(), BufferUploader->CalculateOffset(dest), desc.ByteWidth);
+			GetCommandList()->CopyBufferRegion(buffer->m_resource.Get(), 0, BufferUploader->m_resource.Get(), BufferUploader->CalculateOffset(dest), desc.ByteWidth);
 		}
 
 		// Create resource views if needed
@@ -1947,37 +1956,37 @@ namespace GraphicsTypes
 			case SHADERSTAGE::VS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "VERTEX_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "vs_main", "vs_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "vs_main", "vs_5_1");
 			}
 			break;
 			case SHADERSTAGE::PS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "PIXEL_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "ps_main", "ps_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "ps_main", "ps_5_1");
 			}
 			break;
 			case SHADERSTAGE::CS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "COMPUTE_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "cs_main", "cs_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "cs_main", "cs_5_1");
 			}
 			break;
 			case SHADERSTAGE::GS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "GEOMETRY_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "gs_main", "gs_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "gs_main", "gs_5_1");
 			}
 			break;
 			case SHADERSTAGE::HS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "HULL_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "hs_main", "hs_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "hs_main", "hs_5_1");
 			}
 			break;
 			case SHADERSTAGE::DS:
 			{
 				D3D_SHADER_MACRO _macros[2] = { "DOMAIN_SHADER", "1" };
-				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "ds_main", "ds_5_0");
+				shader->m_blob = D3DUtils::CompileShader(filename, _macros, "ds_main", "ds_5_1");
 			}
 			break;
 			default:

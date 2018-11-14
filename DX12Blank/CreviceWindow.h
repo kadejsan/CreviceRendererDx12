@@ -3,6 +3,8 @@
 #include "BaseWindow.h"
 #include "GraphicsDevice.h"
 #include "MathHelper.h"
+#include "PSOCache.h"
+#include "RenderObject.h"
 
 class CubeMesh;
 class Material;
@@ -27,34 +29,19 @@ public:
 	GraphicsTypes::GraphicsDevice& GetDevice() { assert(m_graphicsDevice != nullptr); return *m_graphicsDevice; }
 
 private:
-	GraphicsTypes::GraphicsDevice* m_graphicsDevice;
+	GraphicsTypes::GraphicsDevice*	m_graphicsDevice;
+	PSOCache						m_psoCache;
 
-	// Temporary: single object rendering
+
+	// Temporary: objects list rendering
 	// #TODO: Scene graph
-	void InitializeRenderObject();
-	void UpdateConstantBuffer();
+	std::vector<RenderObject>		m_renderObjects;
+	void InitializeRenderObjects();
+	void UpdateConstantBuffer(const RenderObject& renderObject);
 
 	struct ObjectConstants
 	{
 		float4x4 WorldViewProj = MathHelper::Identity4x4();
 	};
-
-	struct RenderObject
-	{
-	public:
-		RenderObject()
-			: m_mesh(nullptr)
-			, m_pso(nullptr)
-		{}
-
-		~RenderObject();
-
-		float4x4 m_world = MathHelper::Identity4x4();
-		float4x4 m_view = MathHelper::Identity4x4();
-		float4x4 m_proj = MathHelper::Identity4x4();
-
-		CubeMesh*						m_mesh;
-		GraphicsTypes::GraphicsPSO*		m_pso;
-		GraphicsTypes::GPUBuffer*		m_objCB;
-	} m_object;
+	GraphicsTypes::GPUBuffer*		m_objCB;
 };

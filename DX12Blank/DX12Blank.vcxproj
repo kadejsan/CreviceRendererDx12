@@ -124,7 +124,7 @@
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="CreviceWindow.h" />
-    <ClInclude Include="CubeMesh.h" />
+    <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EngineTimer.h" />
@@ -137,6 +137,8 @@
     <ClInclude Include="Material.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="PSOCache.h" />
+    <ClInclude Include="RenderObject.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="Types.h" />
@@ -146,7 +148,7 @@
     <ClCompile Include="BaseWindow.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CreviceWindow.cpp" />
-    <ClCompile Include="CubeMesh.cpp" />
+    <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="D3DUtils.cpp" />
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
@@ -155,6 +157,8 @@
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="MathHelper.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="PSOCache.cpp" />
+    <ClCompile Include="RenderObject.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="Win32Application.cpp" />
   </ItemGroup>

@@ -69,9 +69,6 @@
     <ClInclude Include="Types.h">
       <Filter>Engine\Graphics\GpuApi</Filter>
     </ClInclude>
-    <ClInclude Include="CubeMesh.h">
-      <Filter>Engine\Mesh</Filter>
-    </ClInclude>
     <ClInclude Include="StringUtils.h">
       <Filter>Engine\Utils</Filter>
     </ClInclude>
@@ -86,6 +83,15 @@
     </ClInclude>
     <ClInclude Include="MathHelper.h">
       <Filter>Engine\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="PSOCache.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryGenerator.h">
+      <Filter>Engine\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderObject.h">
+      <Filter>Engine\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -119,9 +125,6 @@
     <ClCompile Include="Mesh.cpp">
       <Filter>Engine\Mesh</Filter>
     </ClCompile>
-    <ClCompile Include="CubeMesh.cpp">
-      <Filter>Engine\Mesh</Filter>
-    </ClCompile>
     <ClCompile Include="Material.cpp">
       <Filter>Engine\Material</Filter>
     </ClCompile>
@@ -130,6 +133,15 @@
     </ClCompile>
     <ClCompile Include="MathHelper.cpp">
       <Filter>Engine\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="PSOCache.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenerator.cpp">
+      <Filter>Engine\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderObject.cpp">
+      <Filter>Engine\Graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "GraphicsDescriptors.h"
-#include "GraphicsResource.h"
+#include "GraphicsDevice.h"
 
 using namespace GraphicsTypes;
 
@@ -33,5 +32,11 @@ struct Mesh
 	// A MeshGeometry may store multiple geometries in one vertex/index buffer.
 	// Use this container to define the Submesh geometries so we can draw
 	// the Submeshes individually.
-	std::unordered_map<std::string, Submesh> m_drawArgs;
+	std::vector<Submesh> m_drawArgs;
+
+public:
+	void Draw(GraphicsTypes::GraphicsDevice& device);
+
+	void CreateVertexBuffers(GraphicsTypes::GraphicsDevice& device, void* data, UINT size, UINT stride);
+	void CreateIndexBuffers(GraphicsTypes::GraphicsDevice& device, void* data, UINT size);
 };

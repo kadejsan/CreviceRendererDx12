@@ -22,9 +22,6 @@ namespace GraphicsTypes
 		virtual void Flush() override;
 
 	public:
-		inline ComPtr<ID3D12CommandAllocator> GetCommandAllocator(){ return m_commandAllocator[m_frameIndex]; }
-		inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return m_commandList; }
-		inline ComPtr<ID3D12Resource> GetCurrentRenderTarget() { return m_renderTargets[m_frameIndex]; }
 		inline ComPtr<ID3D12Resource> GetDepthStencilBuffer() { return m_depthStencil; }
 		inline ComPtr<ID3D12DescriptorHeap> GetRTVHeap() { return m_rtvHeap; }
 		inline ComPtr<ID3D12DescriptorHeap> GetDSVHeap() { return m_dsvHeap; }
@@ -72,7 +69,7 @@ namespace GraphicsTypes
 	private:
 		void GetHardwareAdapter( IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter );
 		bool CheckTearingSupport(ComPtr<IDXGIFactory4> factory4);
-		void UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap);
+		void UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap, UINT n);
 		void UpdateDepthStencil(ComPtr<ID3D12Device> device, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT backBufferWidth, UINT backBufferHeight);
 		void UpdateViewportAndScissor(UINT backBufferWidth, UINT backBufferHeight);
 
@@ -92,18 +89,18 @@ namespace GraphicsTypes
 		
 		void SetupForDraw();
 
+		inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return Frames[m_frameIndex].GetCommandList(); }
+		inline UINT64 GetFenceValue() { return Frames[m_frameIndex].GetFenceValue(); }
+
 	private:
 		// Pipeline objects.
 		ComPtr<IDXGIFactory4>				m_dxgiFactory;
 		ComPtr<ID3D12Device>				m_device;
 		ComPtr<IDXGISwapChain4>				m_swapChain;
-		ComPtr<ID3D12Resource>				m_renderTargets[st_frameCount];
 		ComPtr<ID3D12Resource>				m_depthStencil;
-		ComPtr<ID3D12CommandAllocator>		m_commandAllocator[st_frameCount];
 		ComPtr<ID3D12CommandQueue>			m_commandQueue;
 		ComPtr<ID3D12DescriptorHeap>		m_rtvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
-		ComPtr<ID3D12GraphicsCommandList>	m_commandList;
 
 		ComPtr<ID3D12RootSignature>			m_graphicsRootSig;
 		ComPtr<ID3D12RootSignature>			m_computeRootSig;
@@ -119,7 +116,7 @@ namespace GraphicsTypes
 		// Synchronization objects.
 		HANDLE								m_fenceEvent;
 		ComPtr<ID3D12Fence>					m_fence;
-		UINT64								m_fenceValues[st_frameCount];
+		UINT64								m_currentFence;
 
 		D3D_DRIVER_TYPE						m_driverType = D3D_DRIVER_TYPE_HARDWARE;
 		FORMAT								m_backBufferFormat = FORMAT_R8G8B8A8_UNORM;
@@ -132,6 +129,16 @@ namespace GraphicsTypes
 
 		struct FrameResources
 		{
+			ComPtr<ID3D12Resource>				m_backBuffer;
+			ComPtr<ID3D12CommandAllocator>		m_commandAllocator;
+			ComPtr<ID3D12GraphicsCommandList>	m_commandList;
+			UINT64								m_fenceValue;
+
+			inline ComPtr<ID3D12CommandAllocator> GetCommandAllocator() { return m_commandAllocator; }
+			inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return m_commandList; }
+			inline ComPtr<ID3D12Resource> GetRenderTarget() { return m_backBuffer; }
+			inline UINT64 GetFenceValue() { return m_fenceValue; }
+
 			struct DescriptorTableFrameAllocator
 			{
 				ComPtr<ID3D12DescriptorHeap>	m_heapCPU;

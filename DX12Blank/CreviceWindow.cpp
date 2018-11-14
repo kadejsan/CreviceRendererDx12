@@ -3,8 +3,9 @@
 #include "GraphicsDevice_DX12.h"
 #include "CreviceWindow.h"
 #include "DXHelper.h"
-#include "CubeMesh.h"
+#include "GeometryGenerator.h"
 #include "Material.h"
+#include "Camera.h"
 
 CreviceWindow::CreviceWindow( std::string name )
 	: BaseWindow( name )
@@ -19,6 +20,14 @@ void CreviceWindow::OnInit()
 
 	m_graphicsDevice = new GraphicsTypes::GraphicsDevice_DX12();
 	m_graphicsDevice->Initialize( this );
+
+	m_psoCache.Initialize(*m_graphicsDevice);
+
+	GetDevice().PresentBegin();
+	InitializeRenderObjects();
+	GetDevice().PresentEnd();
+
+	m_graphicsDevice->Flush();
 }
 
 void CreviceWindow::OnUpdate()
@@ -30,20 +39,19 @@ void CreviceWindow::OnRender()
 {
 	GetDevice().PresentBegin();
 
-	// #TODO: Initialize with dedicated copy queue out of OnRender method
-	InitializeRenderObject();
+	if (m_wireframe)
+		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(ePSO::SimpleColorWireframe));
+	else
+		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(ePSO::SimpleColorSolid));
 
-	// Update buffer
-	UpdateConstantBuffer();
+	GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objCB, 0);
 
-	GPUBuffer* vertexBufs[] = { &m_object.m_mesh->m_vertexBufferGPU };
-	const UINT strides[] = { m_object.m_mesh->m_vertexBufferGPU.m_desc.StructureByteStride };
-	GetDevice().BindVertexBuffers(vertexBufs, 0, 1, strides);
-	GetDevice().BindIndexBuffer(&(m_object.m_mesh->m_indexBufferGPU), m_object.m_mesh->m_indexBufferGPU.m_desc.Format, 0);
-	GetDevice().BindGraphicsPSO(m_object.m_pso);
-	GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_object.m_objCB, 0);
-
-	GetDevice().DrawIndexed(m_object.m_mesh->m_drawArgs["box"].IndexCount, 0, 0);
+	for (auto o : m_renderObjects)
+	{
+		// Update buffer
+		UpdateConstantBuffer(o);
+		o.m_mesh->Draw(GetDevice());
+	}
 
 	GetDevice().PresentEnd();
 }
@@ -51,6 +59,8 @@ void CreviceWindow::OnRender()
 void CreviceWindow::OnDestroy()
 {
 	delete m_graphicsDevice;
+	for (auto& ro : m_renderObjects)
+		delete ro.m_mesh;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -79,57 +89,58 @@ void CreviceWindow::OnMouseMove(WPARAM btnState, int x, int y)
 	BaseWindow::OnMouseMove(btnState, x, y);
 }
 
-void CreviceWindow::InitializeRenderObject()
+void CreviceWindow::InitializeRenderObjects()
 {
-	// Initialize box mesh
-	if (m_object.m_mesh == nullptr)
-		m_object.m_mesh = new CubeMesh(m_graphicsDevice);
-
-	// Build PSO
-	if(m_object.m_pso == nullptr)
+	static const UINT32 NumObjects = 16;
+	for (UINT32 i = 0; i < NumObjects; ++i)
 	{
-		GraphicsPSODesc psoDesc = {};
-		psoDesc.VS = new VertexShader();
-		psoDesc.PS = new PixelShader();
-		m_graphicsDevice->CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.VS);
-		m_graphicsDevice->CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.PS);
+		RenderObject ro;
+		ro.m_mesh = new Mesh();
 		{
-			VertexInputLayoutDesc layoutDesc[2] =
+			UINT32 j = i % 4;
+			GeometryGenerator::MeshData obj;
+			switch (j)
 			{
-				{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
-				{ "COLOR", 0, FORMAT_R32G32B32A32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 }
-			};
-			psoDesc.IL = new VertexLayout();
-			m_graphicsDevice->CreateInputLayout(layoutDesc, 2, psoDesc.IL);
-		}
-		psoDesc.RS = new RasterizerState();
-		psoDesc.BS = new BlendState();
-		psoDesc.DSS = new DepthStencilState();
-		psoDesc.PT = PRIMITIVETOPOLOGY::TRIANGLELIST;
-		psoDesc.SampleMask = UINT_MAX;
-		psoDesc.NumRTs = 1;
-		psoDesc.RTFormats[0] = m_graphicsDevice->GetBackBufferFormat();
-		psoDesc.SampleDesc.Count = 1;
-		psoDesc.SampleDesc.Quality = 0;
-		psoDesc.DSFormat = m_graphicsDevice->GetDepthStencilFormat();
+			case 0:
+				obj = GeometryGenerator::CreateSphere(1.0f, 8, 8);
+				break;
+			case 1:
+				obj = GeometryGenerator::CreateBox(2.0f, 2.0f, 2.0f, 3);
+				break;
+			case 2:
+				obj = GeometryGenerator::CreateCylinder(1.0f, 0.0f, 2.0f, 8, 8);
+				break;
+			case 3:
+				obj = GeometryGenerator::CreateCylinder(1.0f, 1.0f, 2.0f, 8, 8);
+			}
 
-		m_object.m_pso = new GraphicsPSO();
-		m_graphicsDevice->CreateGraphicsPSO(&psoDesc, m_object.m_pso);
+			const UINT vbByteSize = (UINT)obj.Vertices.size() * sizeof(GeometryGenerator::Vertex);
+			const UINT ibByteSize = (UINT)obj.Indices32.size() * sizeof(UINT16);
+
+			ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
+			ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize);
+
+			XMMATRIX worldMtx = XMMatrixTranslation(-4.0f + 2.0f * (i / 4), 0, -4.0f + 2.0f* (i % 4));
+			XMStoreFloat4x4(&ro.m_world, worldMtx);
+
+			Submesh submesh;
+			submesh.IndexCount = (UINT)obj.Indices32.size();
+			submesh.StartIndexLocation = 0;
+			submesh.BaseVertexLocation = 0;
+			submesh.Bounds = obj.BBox;
+
+			ro.m_mesh->m_drawArgs.reserve(1);
+			ro.m_mesh->m_drawArgs.push_back(submesh);
+		}
+		m_renderObjects.push_back(std::move(ro));
 	}
 
-	if (m_object.m_objCB == nullptr)
+	if (m_objCB == nullptr)
 	{
-		m_object.m_objCB = new GraphicsTypes::GPUBuffer();
-
-		XMMATRIX world = XMLoadFloat4x4(&m_object.m_world);
-		XMMATRIX view = XMLoadFloat4x4(&m_object.m_view);
-		XMMATRIX proj = XMLoadFloat4x4(&m_object.m_proj);
-		XMMATRIX worldViewProj = world * view * proj;
+		m_objCB = new GraphicsTypes::GPUBuffer();
 
 		ObjectConstants objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
-		// Update constant buffer with the latest worldViewProj matrix
-		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
 
 		GPUBufferDesc bd;
 		bd.BindFlags = BIND_CONSTANT_BUFFER;
@@ -138,47 +149,28 @@ void CreviceWindow::InitializeRenderObject()
 		bd.ByteWidth = sizeof(ObjectConstants);
 		SubresourceData initData;
 		initData.SysMem = &objCB;
-		GetDevice().CreateBuffer(bd, &initData, m_object.m_objCB);
-		GetDevice().TransitionBarrier(m_object.m_objCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		GetDevice().CreateBuffer(bd, &initData, m_objCB);
+		GetDevice().TransitionBarrier(m_objCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 }
 
-void CreviceWindow::UpdateConstantBuffer()
+void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 {
-	if (m_object.m_objCB != nullptr)
+	if (m_objCB != nullptr)
 	{
-		// Convert Spherical to Cartesian coordinates.
-		float x = m_radius * sinf(m_phi)*cosf(m_theta);
-		float z = m_radius * sinf(m_phi)*sinf(m_theta);
-		float y = m_radius * cosf(m_phi);
+		const Camera* cam = GetCamera();
 
-		// Build the view matrix.
-		XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
-		XMVECTOR target = XMVectorZero();
-		XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-		XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
-		XMStoreFloat4x4(&m_object.m_view, view);
-
-		// The window resized, so update the aspect ratio and recompute the projection matrix.
-		XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
-		XMStoreFloat4x4(&m_object.m_proj, proj);
-
-		XMMATRIX world = XMLoadFloat4x4(&m_object.m_world);
+		XMMATRIX world = XMLoadFloat4x4(&renderObject.m_world);
+		XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
+		XMMATRIX proj = XMLoadFloat4x4(&cam->m_proj);
 		XMMATRIX worldViewProj = world * view * proj;
 
 		ObjectConstants objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 		// Update constant buffer with the latest worldViewProj matrix
 		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
-		GetDevice().UpdateBuffer(m_object.m_objCB, &objCB, sizeof(ObjectConstants));
+		GetDevice().UpdateBuffer(m_objCB, &objCB, sizeof(ObjectConstants));
 	}
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-CreviceWindow::RenderObject::~RenderObject()
-{
-	SAFE_DELETE(m_mesh);
-	SAFE_DELETE(m_pso);
-}

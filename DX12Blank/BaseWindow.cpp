@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "BaseWindow.h"
 #include "MathHelper.h"
+#include "Camera.h"
 
 using namespace std;
 
@@ -9,12 +10,15 @@ BaseWindow::BaseWindow( std::string windowName )
 	, m_useWarpDevice( false )
 	, m_width( 1280 )
 	, m_height( 720 )
+	, m_wireframe(false)
 {
+	m_camera = new CameraArcBall(AspectRatio());
+	m_camera->Update();
 }
 
 BaseWindow::~BaseWindow()
 {
-
+	delete m_camera;
 }
 
 void BaseWindow::OnUpdate()
@@ -24,6 +28,14 @@ void BaseWindow::OnUpdate()
 	{
 		CalculateFrameStats();
 	}
+}
+
+void BaseWindow::OnKeyDown(UINT8 key)
+{
+	if (GetAsyncKeyState('2') & 0x8000)
+		m_wireframe = true;
+	else
+		m_wireframe = false;
 }
 
 void BaseWindow::OnMouseDown(WPARAM btnState, int x, int y)
@@ -48,11 +60,8 @@ void BaseWindow::OnMouseMove(WPARAM btnState, int x, int y)
 		float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePos.y));
 
 		// Update angles based on input to orbit camera around box.
-		m_theta += dx;
-		m_phi += dy;
-
-		// Restrict the angle mPhi.
-		m_phi = MathHelper::Clamp(m_phi, 0.1f, MathHelper::Pi - 0.1f);
+		m_camera->SetTheta(dx);
+		m_camera->SetPhi(dy);
 	}
 	else if ((btnState & MK_RBUTTON) != 0)
 	{
@@ -61,14 +70,21 @@ void BaseWindow::OnMouseMove(WPARAM btnState, int x, int y)
 		float dy = 0.005f*static_cast<float>(y - m_lastMousePos.y);
 
 		// Update the camera radius based on input.
-		m_radius += dx - dy;
-
-		// Restrict the radius.
-		m_radius = MathHelper::Clamp(m_radius, 3.0f, 15.0f);
+		m_camera->SetRadius(dx - dy);
 	}
+
+	m_camera->Update();
 
 	m_lastMousePos.x = x;
 	m_lastMousePos.y = y;
+}
+
+void BaseWindow::OnMouseWheel(float delta)
+{
+	// Update the camera radius based on input.
+	m_camera->SetRadius(-0.005f*delta);
+
+	m_camera->Update();
 }
 
 void BaseWindow::ParseCommandLineArgs(_In_reads_(argc) WCHAR* argv[], int argc)

@@ -10,7 +10,7 @@ namespace GraphicsTypes
 	class GraphicsDevice
 	{
 	protected:
-		static const UINT32 st_frameCount = 2; // double buffering
+		static const UINT32 st_frameCount = 3; // triple buffering
 		static const UINT   st_useVsync = 0;
 
 	public:
