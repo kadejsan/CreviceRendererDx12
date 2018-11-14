@@ -45,6 +45,7 @@ private:
 
 	struct ObjectConstants
 	{
+		float4x4 World		   = MathHelper::Identity4x4();
 		float4x4 Scene		   = MathHelper::Identity4x4();
 		float4x4 WorldViewProj = MathHelper::Identity4x4();
 	};
@@ -64,6 +65,12 @@ private:
 	};
 	GPUBuffer*		m_shadingCB;
 
+	struct SpecularMapFilterConstants
+	{
+		float Roughness;
+	};
+	GPUBuffer*		m_specularMapFilterCB;
+
 	enum ETextureType
 	{
 		ETT_Albedo,
@@ -79,4 +86,6 @@ private:
 	Texture2D*		m_envTexture;
 	Texture2D*		m_envTextureUnfiltered;
 	Texture2D*		m_envTextureEquirect;
+	Texture2D*		m_irradianceMap;
+	Texture2D*		m_spBRDFLut;
 };

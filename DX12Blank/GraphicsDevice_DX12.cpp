@@ -1292,6 +1292,10 @@ namespace Graphics
 		SAFE_DELETE(m_nullCBV);
 		SAFE_DELETE(m_nullSRV);
 		SAFE_DELETE(m_nullUAV);
+
+		SAFE_DELETE(m_linearDownsamplePSO);
+		SAFE_DELETE(m_gammaDownsamplePSO);
+		SAFE_DELETE(m_arrayDownsamplePSO);
 	}
 
 	void GraphicsDevice_DX12::Initialize(BaseWindow* window)
@@ -2412,12 +2416,14 @@ namespace Graphics
 			}
 			else
 			{
-				// TODO: implement array support
+				assert(resource->m_additionalSRVs.size() > static_cast<size_t>(arrayIndex) && "Invalid arrayIndex!");
+				GetFrameResources().ResourceDescriptorsGPU->Update(stage, GPU_RESOURCE_HEAP_CBV_COUNT + slot,
+					resource->m_additionalSRVs[arrayIndex], m_device, GetCommandList());
 			}
 		}
 	}
 
-	void GraphicsDevice_DX12::BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex)
+	void GraphicsDevice_DX12::BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex /*= -1*/)
 	{
 		assert(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
 
@@ -2433,7 +2439,9 @@ namespace Graphics
 			}
 			else
 			{
-				// TODO: implement array support
+				assert(resource->m_additionalUAVs.size() > static_cast<size_t>(arrayIndex) && "Invalid arrayIndex!");
+				GetFrameResources().ResourceDescriptorsGPU->Update(SHADERSTAGE::CS, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
+					resource->m_additionalUAVs[arrayIndex], m_device, GetCommandList());
 			}
 		}
 	}
@@ -3165,6 +3173,7 @@ namespace Graphics
 			UINT arraySize = (*texture2D)->m_desc.ArraySize;
 
 			D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
+			uav_desc.Format = ConvertFormat(desc.Format);
 			if (arraySize > 1)
 			{
 				uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
@@ -3184,7 +3193,14 @@ namespace Graphics
 				UINT miplevels = (*texture2D)->m_desc.MipLevels;
 				for (UINT i = 0; i < miplevels; ++i)
 				{
-					uav_desc.Texture2D.MipSlice = i;
+					if (arraySize > 1)
+					{
+						uav_desc.Texture2DArray.MipSlice = i;
+					}
+					else
+					{
+						uav_desc.Texture2D.MipSlice = i;
+					}
 
 					(*texture2D)->m_additionalUAVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
 					(*texture2D)->m_additionalUAVs.back()->ptr = ResourceAllocator->Allocate();
@@ -3672,8 +3688,7 @@ namespace Graphics
 			CreateTexture(desc.Width, desc.Height, 1, DXGI_FORMAT_R8G8B8A8_UNORM, desc.MipLevels);
 
 			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-			GetCommandList()->CopyResource(linearTexture.m_resource.Get(), tex.m_resource.Get());
-			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(linearTexture.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON));
+			CopyTexture(&linearTexture, &tex);
 		}
 
 		BindComputePSO(pso);
@@ -3705,9 +3720,49 @@ namespace Graphics
 		else
 		{
 			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(tex.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
-			GetCommandList()->CopyResource(tex.m_resource.Get(), linearTexture.m_resource.Get());
-			GetCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(tex.m_resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON));
+			CopyTexture(&tex, &linearTexture);
 		}
+	}
+
+	void GraphicsDevice_DX12::CopyTexture(Texture* dst, Texture* src)
+	{
+		GetCommandList()->CopyResource(dst->m_resource.Get(), src->m_resource.Get());
+
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = dst->m_resource.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		GetCommandList()->ResourceBarrier(1, &barrier);
+	}
+
+	void GraphicsDevice_DX12::CopyTextureRegion(Texture* dstTexture, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* srcTexture, UINT srcMip, UINT arraySlice)
+	{
+		D3D12_RESOURCE_DESC dst_desc = dstTexture->m_resource->GetDesc();
+		D3D12_RESOURCE_DESC src_desc = srcTexture->m_resource->GetDesc();
+
+		D3D12_TEXTURE_COPY_LOCATION dst = {};
+		dst.pResource = dstTexture->m_resource.Get();
+		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dst.SubresourceIndex = D3D12CalcSubresource(dstMip, arraySlice, 0, dst_desc.MipLevels, dst_desc.DepthOrArraySize);
+
+		D3D12_TEXTURE_COPY_LOCATION src = {};
+		src.pResource = srcTexture->m_resource.Get();
+		src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		src.SubresourceIndex = D3D12CalcSubresource(srcMip, arraySlice, 0, src_desc.MipLevels, src_desc.DepthOrArraySize);
+
+		GetCommandList()->CopyTextureRegion(&dst, dstX, dstY, dstZ, &src, nullptr);
+
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = dstTexture->m_resource.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		GetCommandList()->ResourceBarrier(1, &barrier);
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

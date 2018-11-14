@@ -118,4 +118,19 @@ void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)
 	device.CreateShader(L"Shaders\\Equirect2Cube.hlsl", psoDesc.CS);
 	m_cacheCompute[Equirect2Cube] = std::make_unique<ComputePSO>();
 	device.CreateComputePSO(&psoDesc, m_cacheCompute[Equirect2Cube].get());
+
+	psoDesc.CS = new ComputeShader();
+	device.CreateShader(L"Shaders\\Spmap.hlsl", psoDesc.CS);
+	m_cacheCompute[SpecularEnvironmentMap] = std::make_unique<ComputePSO>();
+	device.CreateComputePSO(&psoDesc, m_cacheCompute[SpecularEnvironmentMap].get());
+
+	psoDesc.CS = new ComputeShader();
+	device.CreateShader(L"Shaders\\Irrmap.hlsl", psoDesc.CS);
+	m_cacheCompute[IrradianceMap] = std::make_unique<ComputePSO>();
+	device.CreateComputePSO(&psoDesc, m_cacheCompute[IrradianceMap].get());
+
+	psoDesc.CS = new ComputeShader();
+	device.CreateShader(L"Shaders\\Spbrdf.hlsl", psoDesc.CS);
+	m_cacheCompute[SpecularBRDFLut] = std::make_unique<ComputePSO>();
+	device.CreateComputePSO(&psoDesc, m_cacheCompute[SpecularBRDFLut].get());
 }

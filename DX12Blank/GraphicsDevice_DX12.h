@@ -76,7 +76,10 @@ namespace Graphics
 		virtual void InvalidateBufferAccess(GPUBuffer* buffer) override;
 
 		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) override;
+		
 		virtual void GenerateMipmaps(Texture* texture) override;
+		virtual void CopyTexture(Texture* dst, Texture* src) override;
+		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) override;
 
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();

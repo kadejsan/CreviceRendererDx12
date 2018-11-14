@@ -28,10 +28,10 @@ void CreviceWindow::OnInit()
 	m_samplerCache.Initialize(*Renderer::GGraphicsDevice);
 	
 	GetDevice().PresentBegin();
+	InitializeConstantBuffers();
 	InitializeTextures();
 	InitializeMesh();
 	InitializeRenderObjects();
-	InitializeConstantBuffers();
 	TextRenderer::Font::Initialize(GetWidth(), GetHeight());
 	GetDevice().PresentEnd();
 
@@ -63,6 +63,9 @@ void CreviceWindow::OnRender()
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Normal], 1);
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Roughness], 2);
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Metalness], 3);
+		Renderer::GGraphicsDevice->BindResource(PS, m_envTexture, 4);
+		Renderer::GGraphicsDevice->BindResource(PS, m_irradianceMap, 5);
+		Renderer::GGraphicsDevice->BindResource(PS, m_spBRDFLut, 6);
 		GetDevice().BindSampler(SHADERSTAGE::PS, m_samplerCache.GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
 		UpdateConstantBuffer(m_model);
@@ -74,7 +77,7 @@ void CreviceWindow::OnRender()
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxSolid));
 
 		UpdateConstantBuffer(m_skybox);
-		Renderer::GGraphicsDevice->BindResource(PS, m_envTextureUnfiltered, 0);
+		Renderer::GGraphicsDevice->BindResource(PS, m_envTexture, 0);
 		m_skybox.m_mesh->Draw(GetDevice(), m_skybox.m_world, GetCamera()->m_frustum);
 #else
 		if (m_wireframe)
@@ -194,13 +197,15 @@ void CreviceWindow::InitializeTextures()
 	desc.Width = 1024; desc.Height = 1024;
 	desc.ArraySize = 6;
 	desc.Format = FORMAT_R16G16B16A16_FLOAT;
-	desc.BindFlags = BIND_SHADER_RESOURCE;
+	desc.BindFlags = BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
+	desc.MipLevels = 0;
+	desc.MiscFlags = RESOURCE_MISC_TEXTURECUBE;
+	m_envTexture = new Texture2D();
+	m_envTexture->RequestIndependentUnorderedAccessResourcesForMIPs(true);
 	GetDevice().CreateTexture2D(desc, nullptr, &m_envTexture);
 	{
 		// Unfiltered environment cube map (temporary).
-		desc.BindFlags |= BIND_UNORDERED_ACCESS;
-		desc.MiscFlags = RESOURCE_MISC_TEXTURECUBE;
-		desc.MipLevels = 0;
+		m_envTexture->RequestIndependentUnorderedAccessResourcesForMIPs(false);
 		GetDevice().CreateTexture2D(desc, nullptr, &m_envTextureUnfiltered);
 
 		// Load & convert equirectangular environment map to cubemap texture
@@ -218,12 +223,85 @@ void CreviceWindow::InitializeTextures()
 
 			GetDevice().GenerateMipmaps(m_envTextureUnfiltered);
 		}
+
+		// Compute pre-filtered specular environment map
+		{
+			// Copy 0th mipmap level into destination environment map.
+			GetDevice().TransitionBarrier(m_envTexture, RESOURCE_STATE_COMMON, RESOURCE_STATE_COPY_DEST);
+			GetDevice().TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_COMMON, RESOURCE_STATE_COPY_SOURCE);
+			for (UINT arraySlice = 0; arraySlice < 6; ++arraySlice)
+			{
+				GetDevice().CopyTextureRegion(m_envTexture, 0, 0, 0, 0, m_envTextureUnfiltered, 0, arraySlice);
+			}
+			GetDevice().TransitionBarrier(m_envTexture, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_UNORDERED_ACCESS);
+			GetDevice().TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_COPY_SOURCE, RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+			// Pre-filter rest of the mip chain.
+			
+			GetDevice().BindComputePSO(m_psoCache.GetPSO(SpecularEnvironmentMap));
+			GetDevice().BindConstantBuffer(SHADERSTAGE::CS, m_specularMapFilterCB, 0);
+			GetDevice().BindResource(SHADERSTAGE::CS, m_envTextureUnfiltered, 0);
+
+			const float deltaRoughness = 1.0f / std::max(float(m_envTexture->m_desc.MipLevels - 1), 1.0f);
+			for (UINT level = 1, size = 512; level < m_envTexture->m_desc.MipLevels; ++level, size /= 2)
+			{
+				const UINT numGroups = std::max<UINT>(1, size / 32);
+				const float spmapRoughness = level * deltaRoughness;
+
+				SpecularMapFilterConstants spmapCB;
+				spmapCB.Roughness = spmapRoughness;
+
+				GetDevice().UpdateBuffer(m_specularMapFilterCB, &spmapCB, sizeof(SpecularMapFilterConstants));
+				GetDevice().BindUnorderedAccessResource(m_envTexture, 0, level);
+
+				GetDevice().Dispatch(numGroups, numGroups, 6);
+			}
+
+			GetDevice().TransitionBarrier(m_envTexture, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
+		}
+
+		// Compute diffuse irradiance cubemap.
+		desc.Width = 32; desc.Height = 32;
+		desc.ArraySize = 6;
+		desc.MipLevels = 1;
+		GetDevice().CreateTexture2D(desc, nullptr, &m_irradianceMap);
+		{
+			GetDevice().BindComputePSO(m_psoCache.GetPSO(IrradianceMap));
+
+			GetDevice().TransitionBarrier(m_irradianceMap, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
+
+			GetDevice().BindResource(SHADERSTAGE::CS, m_envTexture, 0);
+			GetDevice().BindUnorderedAccessResource(m_irradianceMap, 0);
+
+			GetDevice().Dispatch(m_irradianceMap->m_desc.Width / 32, m_irradianceMap->m_desc.Height / 32, 6);
+
+			GetDevice().TransitionBarrier(m_irradianceMap, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
+		}
+
+		// Compute Cook-Torrance BRDF 2D LUT for split-sum approximation.
+		desc.Width = 256; desc.Height = 256;
+		desc.ArraySize = 1;
+		desc.Format = FORMAT_R16G16_FLOAT;
+		GetDevice().CreateTexture2D(desc, nullptr, &m_spBRDFLut);
+		{
+			GetDevice().BindComputePSO(m_psoCache.GetPSO(SpecularBRDFLut));
+			GetDevice().BindSampler(SHADERSTAGE::CS, m_samplerCache.GetSamplerState(eSamplerState::LinearClamp), 1);
+
+			GetDevice().TransitionBarrier(m_spBRDFLut, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
+
+			GetDevice().BindUnorderedAccessResource(m_spBRDFLut, 0);
+
+			GetDevice().Dispatch(m_spBRDFLut->m_desc.Width / 32, m_spBRDFLut->m_desc.Height / 32, 1);
+
+			GetDevice().TransitionBarrier(m_spBRDFLut, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
+		}
 	}
 }
 
 void CreviceWindow::InitializeMesh()
 {
 	m_model.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
+	//m_model.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/sphere.obj");
 	m_model.m_world = MathHelper::Identity4x4();
 	m_model.m_world._11 *= 0.1f;
 	m_model.m_world._22 *= 0.1f;
@@ -273,6 +351,24 @@ void CreviceWindow::InitializeConstantBuffers()
 		GetDevice().CreateBuffer(bd, &initData, m_shadingCB);
 		GetDevice().TransitionBarrier(m_shadingCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
+
+	if (m_specularMapFilterCB == nullptr)
+	{
+		m_specularMapFilterCB = new Graphics::GPUBuffer();
+
+		SpecularMapFilterConstants spmapCB;
+		ZeroMemory(&spmapCB, sizeof(spmapCB));
+
+		GPUBufferDesc bd;
+		bd.BindFlags = BIND_CONSTANT_BUFFER;
+		bd.Usage = USAGE_DEFAULT;
+		bd.CpuAccessFlags = 0;
+		bd.ByteWidth = sizeof(SpecularMapFilterConstants);
+		SubresourceData initData;
+		initData.SysMem = &spmapCB;
+		GetDevice().CreateBuffer(bd, &initData, m_specularMapFilterCB);
+		GetDevice().TransitionBarrier(m_specularMapFilterCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	}
 }
 
 void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
@@ -290,6 +386,7 @@ void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 		ObjectConstants objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 		// Update constant buffer with the latest worldViewProj matrix
+		XMStoreFloat4x4(&objCB.World, XMMatrixTranspose(world));
 		XMStoreFloat4x4(&objCB.Scene, XMMatrixTranspose(view));
 		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
 		GetDevice().UpdateBuffer(m_objCB, &objCB, sizeof(ObjectConstants));

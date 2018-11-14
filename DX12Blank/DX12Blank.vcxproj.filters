@@ -230,5 +230,14 @@
     <None Include="Shaders\DownsampleLinear.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
+    <None Include="Shaders\Spbrdf.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\Spmap.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\Irrmap.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

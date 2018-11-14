@@ -26,6 +26,7 @@ struct VertexOut
 
 cbuffer cbPerObject : register(b0)
 {
+	float4x4 gWorld;
 	float4x4 gView;
 	float4x4 gWorldViewProj;
 };
@@ -36,12 +37,12 @@ VertexOut vs_main(VertexIn vin)
 
 	// Transform to homogeneous clip space.
 	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
-	vout.Pos = mul(float4(vin.PosL, 1.0f), gView).xyz;
+	vout.Pos = mul(float4(vin.PosL, 1.0f), gWorld).xyz;
 	vout.TexCoord = float2(vin.Tex.x, 1.0f - vin.Tex.y);
 
 	// Tangent space basis vectors (for normal mapping)
 	float3x3 TBN = float3x3(vin.Tangent, vin.Bitangent, vin.Normal);
-	vout.TangentBasis = mul((float3x3)gView, transpose(TBN));
+	vout.TangentBasis = mul((float3x3)gWorld, transpose(TBN));
 
 	return vout;
 }
@@ -69,7 +70,13 @@ Texture2D<float4>	Albedo		: register(t0);
 Texture2D<float4>	Normal		: register(t1);
 Texture2D<float>	Roughness	: register(t2);
 Texture2D<float>	Metalness	: register(t3);
-SamplerState		Sampler		: register(s0);
+
+TextureCube			SpecularMap		 : register(t4);
+TextureCube			IrradianceMap    : register(t5);
+Texture2D			SpecularBRDF_LUT : register(t6);
+
+SamplerState		Sampler		  : register(s0);
+SamplerState		spBRDFSampler : register(s1);
 
 // GGX/Towbridge-Reitz normal distribution function.
 // Uses Disney's reparametrization of alpha = roughness^2.
@@ -102,11 +109,19 @@ float3 fresnelSchlick(float3 F0, float cosTheta)
 	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+// Returns number of mipmap levels for specular IBL environment map.
+uint querySpecularTextureLevels()
+{
+	uint width, height, levels;
+	SpecularMap.GetDimensions(0, width, height, levels);
+	return levels;
+}
+
 float4 ps_main(VertexOut pin) : SV_Target
 {
 	float4 albedo = Albedo.Sample(Sampler, pin.TexCoord);
 	float roughness = Roughness.Sample(Sampler, pin.TexCoord).r;
-	float metalness = 0.0f;// Metalness.Sample(Sampler, pin.TexCoord).r;
+	float metalness = Metalness.Sample(Sampler, pin.TexCoord).r;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
 	float3 Lo = normalize(gEyePosition.xyz - pin.Pos);
@@ -163,7 +178,33 @@ float4 ps_main(VertexOut pin) : SV_Target
 
 	float3 ambientLighting = 0.0f;
 	{
+		// Sample diffuse irradiance at normal direction.
+		float3 irradiance = IrradianceMap.Sample(Sampler, N).rgb;
 
+		// Calculate Fresnel term for ambient lighting.
+		// Since we use pre-filtered cubemap(s) and irradiance is coming from many directions
+		// use cosLo instead of angle with light's half-vector (cosLh above).
+		// See: https://seblagarde.wordpress.com/2011/08/17/hello-world/
+		float3 F = fresnelSchlick(F0, cosLo);
+
+		// Get diffuse contribution factor (as with direct lighting).
+		float3 kd = lerp(1.0 - F, 0.0, metalness);
+
+		// Irradiance map contains exitant radiance assuming Lambertian BRDF, no need to scale by 1/PI here either.
+		float3 diffuseIBL = kd * albedo.rgb * irradiance;
+
+		// Sample pre-filtered specular reflection environment at correct mipmap level.
+		uint specularTextureLevels = querySpecularTextureLevels();
+		float3 specularIrradiance = SpecularMap.SampleLevel(Sampler, Lr, roughness * specularTextureLevels).rgb;
+
+		// Split-sum approximation factors for Cook-Torrance specular BRDF.
+		float2 specularBRDF = SpecularBRDF_LUT.Sample(spBRDFSampler, float2(cosLo, roughness)).rg;
+
+		// Total specular IBL contribution.
+		float3 specularIBL = (F0 * specularBRDF.x + specularBRDF.y) * specularIrradiance;
+
+		// Total ambient lighting contribution.
+		ambientLighting = diffuseIBL + specularIBL;
 	}
 
 	// Final pixel color.

@@ -23,6 +23,9 @@ enum eGPSO
 enum eCPSO
 {
 	Equirect2Cube,
+	SpecularEnvironmentMap,
+	IrradianceMap,
+	SpecularBRDFLut,
 
 	CPSO_MAX,
 };

@@ -13,9 +13,9 @@ struct VertexOut
 
 cbuffer cbPerObject : register(b0)
 {
+	float4x4 gWorld;
 	float4x4 gView;
 	float4x4 gWorldViewProj;
-	float4x4 gSkyProj;
 };
 
 VertexOut vs_main(VertexIn vin)

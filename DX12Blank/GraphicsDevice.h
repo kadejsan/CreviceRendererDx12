@@ -64,7 +64,10 @@ namespace Graphics
 		virtual void InvalidateBufferAccess(GPUBuffer* buffer) = 0;
 
 		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) = 0;
+		
 		virtual void GenerateMipmaps(Texture* texture) = 0;
+		virtual void CopyTexture(Texture* dst, Texture* src) = 0;
+		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) = 0;
 
 		virtual void BeginProfilerBlock(const char* name) = 0;
 		virtual void EndProfilerBlock() = 0;
