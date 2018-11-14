@@ -7,6 +7,7 @@
 #include "GraphicsResource.h"
 #include "DDSTextureLoader12.h"
 #include "WICTextureLoader12.h"
+#include "Image.h"
 
 # define USE_PIX
 #include <pix3.h>
@@ -811,6 +812,15 @@ namespace Graphics
 			break;
 		};
 	}
+	inline D3D12_SUBRESOURCE_DATA ConvertSubresourceData(const SubresourceData& initialData)
+	{
+		D3D12_SUBRESOURCE_DATA data;
+		data.pData = initialData.SysMem;
+		data.RowPitch = initialData.SysMemPitch;
+		data.SlicePitch = initialData.SysMemSlicePitch;
+
+		return data;
+	}
 	inline FORMAT ConvertFormat_Inv(DXGI_FORMAT value)
 	{
 		switch (value)
@@ -1351,7 +1361,7 @@ namespace Graphics
 
 		// Create resource upload buffer
 		BufferUploader = new UploadBuffer(m_device.Get(), 256 * 1024 * 1024);
-		TextureUploader = new UploadBuffer(m_device.Get(), 256 * 1024 * 1024);
+		TextureUploader = new UploadBuffer(m_device.Get(), 1024 * 1024 * 1024);
 
 		CreateNullResources(m_device);
 
@@ -2055,6 +2065,12 @@ namespace Graphics
 		GetFrameResources().SamplerDescriptorsGPU->Validate(GetDevice(), GetCommandList());
 	}
 
+	void GraphicsDevice_DX12::SetupForDispatch()
+	{
+		GetFrameResources().ResourceDescriptorsGPU->Validate(GetDevice(), GetCommandList());
+		GetFrameResources().SamplerDescriptorsGPU->Validate(GetDevice(), GetCommandList());
+	}
+
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	void GraphicsDevice_DX12::UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT n)
@@ -2307,6 +2323,27 @@ namespace Graphics
 		}
 	}
 
+	void GraphicsDevice_DX12::BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex)
+	{
+		assert(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
+
+		if (resource != nullptr && resource->m_resource != nullptr)
+		{
+			if (arrayIndex < 0)
+			{
+				if (resource->m_uav != nullptr)
+				{
+					GetFrameResources().ResourceDescriptorsGPU->Update(SHADERSTAGE::CS, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
+						resource->m_uav, m_device, GetCommandList());
+				}
+			}
+			else
+			{
+				// TODO: implement array support
+			}
+		}
+	}
+
 	void GraphicsDevice_DX12::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot)
 	{
 		assert(slot < GPU_SAMPLER_HEAP_COUNT);
@@ -2350,7 +2387,16 @@ namespace Graphics
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
-	void GraphicsDevice_DX12::CreateBlob(UINT byteSize, CPUBuffer* buffer)
+	void GraphicsDevice_DX12::Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ)
+	{
+		SetupForDispatch();
+
+		GetCommandList()->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	void GraphicsDevice_DX12::CreateBlob(UINT64 byteSize, CPUBuffer* buffer)
 	{
 		ThrowIfFailed(D3DCreateBlob( byteSize, &buffer->m_blob) );
 	}
@@ -2490,6 +2536,575 @@ namespace Graphics
 				&uavDesc,
 				*buffer->m_uav);
 			assert(buffer->m_uav);
+		}
+	}
+
+	void GraphicsDevice_DX12::CreateTexture2D(const TextureDesc& desc, const SubresourceData* initialData, Texture2D** texture2D)
+	{
+		if ((*texture2D) == nullptr)
+		{
+			(*texture2D) = new Texture2D();
+		}
+		(*texture2D)->m_desc = desc;
+
+		D3D12_HEAP_PROPERTIES heapDesc = {};
+		heapDesc.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapDesc.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapDesc.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		heapDesc.CreationNodeMask = 0;
+		heapDesc.VisibleNodeMask = 0;
+
+		D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
+
+		D3D12_RESOURCE_DESC resDesc;
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Format = ConvertFormat(desc.Format);
+		resDesc.Width = desc.Width;
+		resDesc.Height = desc.Height;
+		resDesc.MipLevels = desc.MipLevels;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		resDesc.DepthOrArraySize = (UINT16)desc.ArraySize;
+		resDesc.Alignment = 0;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		if (desc.BindFlags & BIND_DEPTH_STENCIL)
+		{
+			resDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		}
+		else
+		{
+			resDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS;
+		}
+		if (desc.BindFlags & BIND_RENDER_TARGET)
+		{
+			resDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		}
+		if (desc.BindFlags & BIND_UNORDERED_ACCESS)
+		{
+			resDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		}
+		if (!(desc.BindFlags & BIND_SHADER_RESOURCE) && !(desc.BindFlags & BIND_RESOURCE_NONE))
+		{
+			resDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+		resDesc.SampleDesc.Count = desc.SampleDesc.Count;
+		resDesc.SampleDesc.Quality = desc.SampleDesc.Quality;
+
+		D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON;
+
+		D3D12_CLEAR_VALUE optimizedClearValue = {};
+		optimizedClearValue.Color[0] = 0;
+		optimizedClearValue.Color[1] = 0;
+		optimizedClearValue.Color[2] = 0;
+		optimizedClearValue.Color[3] = 0;
+		optimizedClearValue.DepthStencil.Depth = 0.0f;
+		optimizedClearValue.DepthStencil.Stencil = 0;
+		optimizedClearValue.Format = resDesc.Format;
+		if (optimizedClearValue.Format == DXGI_FORMAT_R16_TYPELESS)
+		{
+			optimizedClearValue.Format = DXGI_FORMAT_D16_UNORM;
+		}
+		else if (optimizedClearValue.Format == DXGI_FORMAT_R32_TYPELESS)
+		{
+			optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+		}
+		else if (optimizedClearValue.Format == DXGI_FORMAT_R32G8X24_TYPELESS)
+		{
+			optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+		}
+		bool useClearValue = desc.BindFlags & BIND_RENDER_TARGET || desc.BindFlags & BIND_DEPTH_STENCIL;
+
+		HRESULT hr = GetDevice()->CreateCommittedResource(&heapDesc, heapFlags, &resDesc, resourceState,
+			useClearValue ? &optimizedClearValue : nullptr,
+			__uuidof(ID3D12Resource), (void**)&(*texture2D)->m_resource);
+
+		assert(SUCCEEDED(hr));
+		
+		if ((*texture2D)->m_desc.MipLevels == 0)
+		{
+			(*texture2D)->m_desc.MipLevels = (UINT)log2(std::max((*texture2D)->m_desc.Width, (*texture2D)->m_desc.Height));
+		}
+
+		// Issue data copy on request
+		if (initialData != nullptr)
+		{
+			D3D12_SUBRESOURCE_DATA* data = new D3D12_SUBRESOURCE_DATA[desc.ArraySize];
+			for (UINT slice = 0; slice < desc.ArraySize; ++slice)
+			{
+				data[slice] = ConvertSubresourceData(initialData[slice]);
+			}
+
+			UINT numSubresources = desc.ArraySize;
+			UINT firstSubresource = 0;
+
+			UINT64 requiredSize = 0;
+			GetDevice()->GetCopyableFootprints(&resDesc, 0, numSubresources, 0, nullptr, nullptr, nullptr, &requiredSize);
+			uint8_t* dest = TextureUploader->Allocate(static_cast<size_t>(requiredSize), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+			
+			UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*texture2D)->m_resource.Get(),
+				TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, numSubresources, data);
+		}
+
+		// Issue creation of additional descriptors for the resource
+		if ((*texture2D)->m_desc.BindFlags & BIND_RENDER_TARGET)
+		{
+			UINT arraySize = (*texture2D)->m_desc.ArraySize;
+			UINT sampleCount = (*texture2D)->m_desc.SampleDesc.Count;
+			bool multisampled = sampleCount > 1;
+
+			D3D12_RENDER_TARGET_VIEW_DESC renderTargetViewDesc = {};
+			renderTargetViewDesc.Format = ConvertFormat((*texture2D)->m_desc.Format);
+			renderTargetViewDesc.Texture2DArray.MipSlice = 0;
+
+			if ((*texture2D)->m_desc.MiscFlags & RESOURCE_MISC_TEXTURECUBE)
+			{
+				// TextureCube, TextureCubeArray...
+				UINT slices = arraySize / 6;
+
+				renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+				renderTargetViewDesc.Texture2DArray.MipSlice = 0;
+
+				if ((*texture2D)->m_independentRTVCubemapFaces)
+				{
+					// independent faces
+					for (UINT i = 0; i < arraySize; ++i)
+					{
+						renderTargetViewDesc.Texture2DArray.FirstArraySlice = i;
+						renderTargetViewDesc.Texture2DArray.ArraySize = 1;
+
+						(*texture2D)->m_additionalRTVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE());
+						(*texture2D)->m_additionalRTVs.back()->ptr = RTAllocator->Allocate();
+						GetDevice()->CreateRenderTargetView((*texture2D)->m_resource.Get(), &renderTargetViewDesc, *(*texture2D)->m_additionalRTVs[i]);
+					}
+				}
+				else if ((*texture2D)->m_independentRTVArraySlices)
+				{
+					// independent slices
+					for (UINT i = 0; i < slices; ++i)
+					{
+						renderTargetViewDesc.Texture2DArray.FirstArraySlice = i * 6;
+						renderTargetViewDesc.Texture2DArray.ArraySize = 6;
+
+						(*texture2D)->m_additionalRTVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE());
+						(*texture2D)->m_additionalRTVs.back()->ptr = RTAllocator->Allocate();
+						GetDevice()->CreateRenderTargetView((*texture2D)->m_resource.Get(), &renderTargetViewDesc, *(*texture2D)->m_additionalRTVs[i]);
+					}
+				}
+
+				{
+					// Create full-resource RTVs:
+					renderTargetViewDesc.Texture2DArray.FirstArraySlice = 0;
+					renderTargetViewDesc.Texture2DArray.ArraySize = arraySize;
+
+					(*texture2D)->m_rtv = new D3D12_CPU_DESCRIPTOR_HANDLE();
+					(*texture2D)->m_rtv->ptr = RTAllocator->Allocate();
+					GetDevice()->CreateRenderTargetView((*texture2D)->m_resource.Get(), &renderTargetViewDesc, *(*texture2D)->m_rtv);
+				}
+			}
+			else
+			{
+				// Texture2D, Texture2DArray...
+				if (arraySize > 1 && (*texture2D)->m_independentRTVArraySlices)
+				{
+					// Create subresource RTVs:
+					for (UINT i = 0; i < arraySize; ++i)
+					{
+						if (multisampled)
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+							renderTargetViewDesc.Texture2DMSArray.FirstArraySlice = i;
+							renderTargetViewDesc.Texture2DMSArray.ArraySize = 1;
+						}
+						else
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+							renderTargetViewDesc.Texture2DArray.FirstArraySlice = i;
+							renderTargetViewDesc.Texture2DArray.ArraySize = 1;
+							renderTargetViewDesc.Texture2DArray.MipSlice = 0;
+						}
+
+						(*texture2D)->m_additionalRTVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE());
+						(*texture2D)->m_additionalRTVs.back()->ptr = RTAllocator->Allocate();
+						GetDevice()->CreateRenderTargetView((*texture2D)->m_resource.Get(), &renderTargetViewDesc, *(*texture2D)->m_additionalRTVs[i]);
+					}
+				}
+
+				{
+					// Create full-resource RTV:
+					if (arraySize > 1)
+					{
+						if (multisampled)
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+							renderTargetViewDesc.Texture2DMSArray.FirstArraySlice = 0;
+							renderTargetViewDesc.Texture2DMSArray.ArraySize = arraySize;
+						}
+						else
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+							renderTargetViewDesc.Texture2DArray.FirstArraySlice = 0;
+							renderTargetViewDesc.Texture2DArray.ArraySize = arraySize;
+							renderTargetViewDesc.Texture2DArray.MipSlice = 0;
+						}
+					}
+					else
+					{
+						if (multisampled)
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+						}
+						else
+						{
+							renderTargetViewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+							renderTargetViewDesc.Texture2D.MipSlice = 0;
+						}
+					}
+
+					(*texture2D)->m_rtv = new D3D12_CPU_DESCRIPTOR_HANDLE();
+					(*texture2D)->m_rtv->ptr = RTAllocator->Allocate();
+					GetDevice()->CreateRenderTargetView((*texture2D)->m_resource.Get(), &renderTargetViewDesc, *(*texture2D)->m_rtv);
+				}
+			}
+		}
+
+		if ((*texture2D)->m_desc.BindFlags & BIND_DEPTH_STENCIL)
+		{
+			UINT arraySize = (*texture2D)->m_desc.ArraySize;
+			UINT sampleCount = (*texture2D)->m_desc.SampleDesc.Count;
+			bool multisampled = sampleCount > 1;
+
+			D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {};
+			depthStencilViewDesc.Texture2DArray.MipSlice = 0;
+			depthStencilViewDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+			// Try to resolve depth stencil format:
+			switch ((*texture2D)->m_desc.Format)
+			{
+			case FORMAT_R16_TYPELESS:
+				depthStencilViewDesc.Format = DXGI_FORMAT_D16_UNORM;
+				break;
+			case FORMAT_R32_TYPELESS:
+				depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT;
+				break;
+			case FORMAT_R24G8_TYPELESS:
+				depthStencilViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+				break;
+			case FORMAT_R32G8X24_TYPELESS:
+				depthStencilViewDesc.Format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+			default:
+				depthStencilViewDesc.Format = ConvertFormat((*texture2D)->m_desc.Format);
+				break;
+			}
+
+			if ((*texture2D)->m_desc.MiscFlags & RESOURCE_MISC_TEXTURECUBE)
+			{
+				// TextureCube, TextureCubeArray...
+				UINT slices = arraySize / 6;
+
+				depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+				depthStencilViewDesc.Texture2DArray.MipSlice = 0;
+
+				if ((*texture2D)->m_independentRTVCubemapFaces)
+				{
+					// independent faces
+					for (UINT i = 0; i < arraySize; ++i)
+					{
+						depthStencilViewDesc.Texture2DArray.FirstArraySlice = i;
+						depthStencilViewDesc.Texture2DArray.ArraySize = 1;
+
+						(*texture2D)->m_additionalDSVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+						(*texture2D)->m_additionalDSVs.back()->ptr = DSAllocator->Allocate();
+						GetDevice()->CreateDepthStencilView((*texture2D)->m_resource.Get(), &depthStencilViewDesc, *(*texture2D)->m_additionalDSVs[i]);
+					}
+				}
+				else if ((*texture2D)->m_independentRTVArraySlices)
+				{
+					// independent slices
+					for (UINT i = 0; i < slices; ++i)
+					{
+						depthStencilViewDesc.Texture2DArray.FirstArraySlice = i * 6;
+						depthStencilViewDesc.Texture2DArray.ArraySize = 6;
+
+						(*texture2D)->m_additionalDSVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+						(*texture2D)->m_additionalDSVs.back()->ptr = DSAllocator->Allocate();
+						GetDevice()->CreateDepthStencilView((*texture2D)->m_resource.Get(), &depthStencilViewDesc, *(*texture2D)->m_additionalDSVs[i]);
+					}
+				}
+
+				{
+					// Create full-resource DSV:
+					depthStencilViewDesc.Texture2DArray.FirstArraySlice = 0;
+					depthStencilViewDesc.Texture2DArray.ArraySize = arraySize;
+
+					(*texture2D)->m_dsv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+					(*texture2D)->m_dsv->ptr = DSAllocator->Allocate();
+					GetDevice()->CreateDepthStencilView((*texture2D)->m_resource.Get(), &depthStencilViewDesc, *(*texture2D)->m_dsv);
+				}
+			}
+			else
+			{
+				// Texture2D, Texture2DArray...
+				if (arraySize > 1 && (*texture2D)->m_independentRTVArraySlices)
+				{
+					// Create subresource DSVs:
+					for (UINT i = 0; i < arraySize; ++i)
+					{
+						if (multisampled)
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+							depthStencilViewDesc.Texture2DMSArray.FirstArraySlice = i;
+							depthStencilViewDesc.Texture2DMSArray.ArraySize = 1;
+						}
+						else
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+							depthStencilViewDesc.Texture2DArray.MipSlice = 0;
+							depthStencilViewDesc.Texture2DArray.FirstArraySlice = i;
+							depthStencilViewDesc.Texture2DArray.ArraySize = 1;
+						}
+
+						(*texture2D)->m_additionalDSVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+						(*texture2D)->m_additionalDSVs.back()->ptr = DSAllocator->Allocate();
+						GetDevice()->CreateDepthStencilView((*texture2D)->m_resource.Get(), &depthStencilViewDesc, *(*texture2D)->m_additionalDSVs[i]);
+					}
+				}
+				else
+				{
+					// Create full-resource DSV:
+					if (arraySize > 1)
+					{
+						if (multisampled)
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+							depthStencilViewDesc.Texture2DMSArray.FirstArraySlice = 0;
+							depthStencilViewDesc.Texture2DMSArray.ArraySize = arraySize;
+						}
+						else
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+							depthStencilViewDesc.Texture2DArray.FirstArraySlice = 0;
+							depthStencilViewDesc.Texture2DArray.ArraySize = arraySize;
+							depthStencilViewDesc.Texture2DArray.MipSlice = 0;
+						}
+					}
+					else
+					{
+						if (multisampled)
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+						}
+						else
+						{
+							depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+							depthStencilViewDesc.Texture2D.MipSlice = 0;
+						}
+					}
+
+					(*texture2D)->m_dsv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+					(*texture2D)->m_dsv->ptr = DSAllocator->Allocate();
+					GetDevice()->CreateDepthStencilView((*texture2D)->m_resource.Get(), &depthStencilViewDesc, *(*texture2D)->m_dsv);
+				}
+			}
+		}
+
+		if ((*texture2D)->m_desc.BindFlags & BIND_SHADER_RESOURCE)
+		{
+			UINT arraySize = (*texture2D)->m_desc.ArraySize;
+			UINT sampleCount = (*texture2D)->m_desc.SampleDesc.Count;
+			bool multisampled = sampleCount > 1;
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc = {};
+			shaderResourceViewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+			// Try to resolve shader resource format:
+			switch ((*texture2D)->m_desc.Format)
+			{
+			case FORMAT_R16_TYPELESS:
+				shaderResourceViewDesc.Format = DXGI_FORMAT_R16_UNORM;
+				break;
+			case FORMAT_R32_TYPELESS:
+				shaderResourceViewDesc.Format = DXGI_FORMAT_R32_FLOAT;
+				break;
+			case FORMAT_R24G8_TYPELESS:
+				shaderResourceViewDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+				break;
+			case FORMAT_R32G8X24_TYPELESS:
+				shaderResourceViewDesc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+				break;
+			default:
+				shaderResourceViewDesc.Format = ConvertFormat((*texture2D)->m_desc.Format);
+				break;
+			}
+
+			if (arraySize > 1)
+			{
+				if ((*texture2D)->m_desc.MiscFlags & RESOURCE_MISC_TEXTURECUBE)
+				{
+					if (arraySize > 6)
+					{
+						shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+						shaderResourceViewDesc.TextureCubeArray.First2DArrayFace = 0;
+						shaderResourceViewDesc.TextureCubeArray.NumCubes = arraySize / 6;
+						shaderResourceViewDesc.TextureCubeArray.MostDetailedMip = 0; //from most detailed...
+						shaderResourceViewDesc.TextureCubeArray.MipLevels = -1; //...to least detailed
+					}
+					else
+					{
+						shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+						shaderResourceViewDesc.TextureCube.MostDetailedMip = 0; //from most detailed...
+						shaderResourceViewDesc.TextureCube.MipLevels = -1; //...to least detailed
+					}
+				}
+				else
+				{
+					if (multisampled)
+					{
+						shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+						shaderResourceViewDesc.Texture2DMSArray.FirstArraySlice = 0;
+						shaderResourceViewDesc.Texture2DMSArray.ArraySize = arraySize;
+					}
+					else
+					{
+						shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+						shaderResourceViewDesc.Texture2DArray.FirstArraySlice = 0;
+						shaderResourceViewDesc.Texture2DArray.ArraySize = arraySize;
+						shaderResourceViewDesc.Texture2DArray.MostDetailedMip = 0; //from most detailed...
+						shaderResourceViewDesc.Texture2DArray.MipLevels = -1; //...to least detailed
+					}
+				}
+				(*texture2D)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+				(*texture2D)->m_srv->ptr = ResourceAllocator->Allocate();
+				GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_srv);
+
+				if ((*texture2D)->m_independentSRVArraySlices)
+				{
+					if ((*texture2D)->m_desc.MiscFlags & RESOURCE_MISC_TEXTURECUBE)
+					{
+						UINT slices = arraySize / 6;
+
+						// independent cubemaps
+						for (UINT i = 0; i < slices; ++i)
+						{
+							shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
+							shaderResourceViewDesc.TextureCubeArray.First2DArrayFace = i * 6;
+							shaderResourceViewDesc.TextureCubeArray.NumCubes = 1;
+							shaderResourceViewDesc.TextureCubeArray.MostDetailedMip = 0; //from most detailed...
+							shaderResourceViewDesc.TextureCubeArray.MipLevels = -1; //...to least detailed
+
+							(*texture2D)->m_additionalSRVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+							(*texture2D)->m_additionalSRVs.back()->ptr = ResourceAllocator->Allocate();
+							GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_additionalSRVs[i]);
+						}
+					}
+					else
+					{
+						UINT slices = arraySize;
+
+						// independent slices
+						for (UINT i = 0; i < slices; ++i)
+						{
+							if (multisampled)
+							{
+								shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
+								shaderResourceViewDesc.Texture2DMSArray.FirstArraySlice = i;
+								shaderResourceViewDesc.Texture2DMSArray.ArraySize = 1;
+							}
+							else
+							{
+								shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+								shaderResourceViewDesc.Texture2DArray.FirstArraySlice = i;
+								shaderResourceViewDesc.Texture2DArray.ArraySize = 1;
+								shaderResourceViewDesc.Texture2DArray.MostDetailedMip = 0; //from most detailed...
+								shaderResourceViewDesc.Texture2DArray.MipLevels = -1; //...to least detailed
+							}
+
+							(*texture2D)->m_additionalSRVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+							(*texture2D)->m_additionalSRVs.back()->ptr = ResourceAllocator->Allocate();
+							GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_additionalSRVs[i]);
+						}
+					}
+				}
+			}
+			else
+			{
+				if (multisampled)
+				{
+					shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+					(*texture2D)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+					(*texture2D)->m_srv->ptr = ResourceAllocator->Allocate();
+					GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_srv);
+				}
+				else
+				{
+					shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+
+					if ((*texture2D)->m_independentSRVMIPs)
+					{
+						// Create subresource SRVs:
+						UINT miplevels = (*texture2D)->m_desc.MipLevels;
+						for (UINT i = 0; i < miplevels; ++i)
+						{
+							shaderResourceViewDesc.Texture2D.MostDetailedMip = i;
+							shaderResourceViewDesc.Texture2D.MipLevels = 1;
+
+							(*texture2D)->m_additionalSRVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+							(*texture2D)->m_additionalSRVs.back()->ptr = ResourceAllocator->Allocate();
+							GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_additionalSRVs[i]);
+						}
+					}
+
+					{
+						// Create full-resource SRV:
+						shaderResourceViewDesc.Texture2D.MostDetailedMip = 0; //from most detailed...
+						shaderResourceViewDesc.Texture2D.MipLevels = -1; //...to least detailed
+						(*texture2D)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+						(*texture2D)->m_srv->ptr = ResourceAllocator->Allocate();
+						GetDevice()->CreateShaderResourceView((*texture2D)->m_resource.Get(), &shaderResourceViewDesc, *(*texture2D)->m_srv);
+					}
+				}
+			}
+		}
+
+		if ((*texture2D)->m_desc.BindFlags & BIND_UNORDERED_ACCESS)
+		{
+			assert((*texture2D)->m_independentRTVArraySlices == false && "TextureArray UAV not implemented!");
+
+			UINT arraySize = (*texture2D)->m_desc.ArraySize;
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
+			if (arraySize > 1)
+			{
+				uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+				uav_desc.Texture2DArray.FirstArraySlice = 0;
+				uav_desc.Texture2DArray.ArraySize = arraySize;
+				uav_desc.Texture2DArray.MipSlice = 0; // TODO: expose to desc
+			}
+			else
+			{
+				uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+				uav_desc.Texture2D.MipSlice = 0; // TODO: expose to desc
+			}
+
+			if ((*texture2D)->m_independentUAVMIPs)
+			{
+				// Create subresource UAVs:
+				UINT miplevels = (*texture2D)->m_desc.MipLevels;
+				for (UINT i = 0; i < miplevels; ++i)
+				{
+					uav_desc.Texture2D.MipSlice = i;
+
+					(*texture2D)->m_additionalUAVs.push_back(new D3D12_CPU_DESCRIPTOR_HANDLE);
+					(*texture2D)->m_additionalUAVs.back()->ptr = ResourceAllocator->Allocate();
+					GetDevice()->CreateUnorderedAccessView((*texture2D)->m_resource.Get(), nullptr, &uav_desc, *(*texture2D)->m_additionalUAVs[i]);
+				}
+			}
+
+			{
+				// Create main resource UAV:
+				uav_desc.Texture2D.MipSlice = 0;
+				(*texture2D)->m_uav = new D3D12_CPU_DESCRIPTOR_HANDLE;
+				(*texture2D)->m_uav->ptr = ResourceAllocator->Allocate();
+				GetDevice()->CreateUnorderedAccessView((*texture2D)->m_resource.Get(), nullptr, &uav_desc, *(*texture2D)->m_uav);
+			}
 		}
 	}
 
@@ -2852,6 +3467,7 @@ namespace Graphics
 
 		std::unique_ptr<uint8_t[]> imageData;
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+		std::shared_ptr<Image> image;
 		bool isCubeMap = false;
 
 		if (!fileName.substr(fileName.length() - 4).compare(std::string(".dds")))
@@ -2859,8 +3475,27 @@ namespace Graphics
 			// Load dds
 			ThrowIfFailed( LoadDDSTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources, 0, nullptr, &isCubeMap) );
 		}
+		else if (!fileName.substr(fileName.length() - 4).compare(std::string(".hdr")))
+		{
+			// Load hdr
+			subresources.push_back({});
+			image = Image::FromFile(fileName);
+
+			TextureDesc desc;
+			desc.Width = image->Width();
+			desc.Height = image->Height();
+			desc.Format = FORMAT_R32G32B32A32_FLOAT;
+			desc.BindFlags = BIND_RESOURCE_NONE;
+
+			CreateTexture2D(desc, nullptr, ppTexture);
+
+			subresources[0].pData = image->Pixels<void>();
+			subresources[0].RowPitch = image->Pitch();
+			subresources[0].SlicePitch = image->DataSize();
+		}
 		else
 		{
+			// Load png, jpeg, ...
 			subresources.push_back({});
 			ThrowIfFailed( LoadWICTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources[0]) );
 		}
@@ -2897,37 +3532,6 @@ namespace Graphics
 
 			UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*ppTexture)->m_resource.Get(),
 				TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, (UINT)subresources.size(), subresources.data());
-		}
-	}
-
-	void GraphicsDevice_DX12::CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels)
-	{
-		(*ppTexture) = new Texture2D();
-
-		{
-			D3D12_RESOURCE_DESC desc = (*ppTexture)->m_resource->GetDesc();
-			(*ppTexture)->m_desc = ConvertTextureDesc_Inv(desc);
-
-			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-			srv_desc.Format = ConvertFormat(format);
-			srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			{
-				srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srv_desc.Texture2D.MipLevels = -1;
-				srv_desc.Texture2D.MostDetailedMip = 0;
-				srv_desc.Texture2D.PlaneSlice = 0;
-				srv_desc.Texture2D.ResourceMinLODClamp = -1;
-			}
-			(*ppTexture)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
-			(*ppTexture)->m_srv->ptr = ResourceAllocator->Allocate();
-			m_device->CreateShaderResourceView((*ppTexture)->m_resource.Get(), &srv_desc, *(*ppTexture)->m_srv);
-
-			UINT64 RequiredSize = 0;
-			m_device->GetCopyableFootprints(&desc, 0, (UINT)levels, 0, nullptr, nullptr, nullptr, &RequiredSize);
-			uint8_t* dest = TextureUploader->Allocate(static_cast<size_t>(RequiredSize), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-
-			//UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*ppTexture)->m_resource.Get(),
-			//	TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, levels, subresources.data());
 		}
 	}
 

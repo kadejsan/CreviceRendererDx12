@@ -5,16 +5,26 @@
 namespace Graphics
 {
 	class GraphicsPSO;
+	class ComputePSO;
 }
 
-enum ePSO
+enum eGPSO
 {
 	SimpleColorSolid,
 	SimpleColorWireframe,
 	PBRSolid,
 	PBRWireframe,
+	SkyboxSolid,
+	SkyboxWireframe,
 
-	PSO_MAX,
+	GPSO_MAX,
+};
+
+enum eCPSO
+{
+	Equirect2Cube,
+
+	CPSO_MAX,
 };
 
 class PSOCache
@@ -25,8 +35,13 @@ public:
 
 	void Initialize( Graphics::GraphicsDevice& device );
 	
-	Graphics::GraphicsPSO* GetPSO(ePSO pso) const { return m_cache[pso].get(); }
+	Graphics::GraphicsPSO* GetPSO(eGPSO pso) const { return m_cacheGraphics[pso].get(); }
+	Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_cacheCompute[pso].get(); }
 
 private:
-	std::vector<std::unique_ptr<Graphics::GraphicsPSO>> m_cache;
+	void InitializeGraphics( Graphics::GraphicsDevice& device );
+	void InitializeCompute( Graphics::GraphicsDevice& device );
+
+	std::vector<std::unique_ptr<Graphics::GraphicsPSO>> m_cacheGraphics;
+	std::vector<std::unique_ptr<Graphics::ComputePSO>> m_cacheCompute;
 };

@@ -28,6 +28,9 @@
     <Filter Include="Engine\Graphics\GpuApi\DirectX12\TextureUtils">
       <UniqueIdentifier>{09c4df14-0e08-4064-8d80-83b8cfe88dee}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Lib">
+      <UniqueIdentifier>{e44f87bf-7df1-4cdb-b708-cb75f5a90c8f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -117,6 +120,9 @@
     <ClInclude Include="SamplerCache.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>Engine\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -188,6 +194,12 @@
     <ClCompile Include="SamplerCache.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>Engine\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Lib\stb\src\libstb.c">
+      <Filter>Engine\Lib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SimpleColor.hlsl">
@@ -200,5 +212,13 @@
     <None Include="Shaders\PBR.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
+    <None Include="Shaders\Skybox.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Equirect2Cube.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

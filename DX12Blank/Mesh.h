@@ -41,8 +41,8 @@ public:
 
 	void Draw(Graphics::GraphicsDevice& device, const float4x4& world, const Frustum& frustum);
 
-	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, UINT stride);
-	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, FORMAT format);
+	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride);
+	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, FORMAT format);
 
 	static std::shared_ptr<Mesh> FromFile(Graphics::GraphicsDevice& device, const std::string& filename);
 };

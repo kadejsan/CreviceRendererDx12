@@ -17,7 +17,13 @@ PSOCache::~PSOCache()
 
 void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 {
-	m_cache.resize(PSO_MAX);
+	InitializeGraphics(device);
+	InitializeCompute(device);
+}
+
+void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
+{
+	m_cacheGraphics.resize(GPSO_MAX);
 
 	// SimpleColorSolid
 	GraphicsPSODesc psoDesc = {};
@@ -50,12 +56,12 @@ void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.DSFormat = device.GetDepthStencilFormat();
 
-	m_cache[SimpleColorSolid] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cache[SimpleColorSolid].get());
+	m_cacheGraphics[SimpleColorSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleColorSolid].get());
 
 	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
-	m_cache[SimpleColorWireframe] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cache[SimpleColorWireframe].get());
+	m_cacheGraphics[SimpleColorWireframe] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleColorWireframe].get());
 
 	// PBR
 	psoDesc.VS = new VertexShader();
@@ -75,10 +81,42 @@ void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 		device.CreateInputLayout(layoutDesc, 5, psoDesc.IL);
 	}
 	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
-	m_cache[PBRSolid] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cache[PBRSolid].get());
+	m_cacheGraphics[PBRSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRSolid].get());
 
 	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
-	m_cache[PBRWireframe] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cache[PBRWireframe].get());
+	m_cacheGraphics[PBRWireframe] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRWireframe].get());
+
+	// Skybox
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\Skybox.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\Skybox.hlsl", psoDesc.PS);
+	{
+		VertexInputLayoutDesc layoutDesc[5] =
+		{
+			{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
+		};
+		psoDesc.IL = new VertexLayout();
+		device.CreateInputLayout(layoutDesc, 1, psoDesc.IL);
+	}
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	m_cacheGraphics[SkyboxSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SkyboxSolid].get());
+
+	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
+	m_cacheGraphics[SkyboxWireframe] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SkyboxWireframe].get());
+}
+
+void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)
+{
+	m_cacheCompute.resize(CPSO_MAX);
+
+	ComputePSODesc psoDesc = {};
+	psoDesc.CS = new ComputeShader();
+	device.CreateShader(L"Shaders\\Equirect2Cube.hlsl", psoDesc.CS);
+	m_cacheCompute[Equirect2Cube] = std::make_unique<ComputePSO>();
+	device.CreateComputePSO(&psoDesc, m_cacheCompute[Equirect2Cube].get());
 }

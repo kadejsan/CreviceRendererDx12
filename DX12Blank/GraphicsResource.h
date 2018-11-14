@@ -12,8 +12,11 @@ namespace Graphics
 	public:
 		ComPtr< ID3D12Resource >		m_resource;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE*	m_srv;
-		D3D12_CPU_DESCRIPTOR_HANDLE*	m_uav;
+		D3D12_CPU_DESCRIPTOR_HANDLE*			  m_srv;
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE*> m_additionalSRVs;
+		
+		D3D12_CPU_DESCRIPTOR_HANDLE*			  m_uav;
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE*> m_additionalUAVs;
 
 		GPUResource();
 		virtual ~GPUResource();
@@ -60,14 +63,33 @@ namespace Graphics
 	class Texture : public GPUResource
 	{
 	public:
-		D3D12_CPU_DESCRIPTOR_HANDLE*	m_rtv;
+		D3D12_CPU_DESCRIPTOR_HANDLE*			  m_rtv;
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE*> m_additionalRTVs;
 
 	public:
 		TextureDesc						m_desc;
 
 	public:
+		bool							m_independentRTVArraySlices;
+		bool							m_independentRTVCubemapFaces;
+		bool							m_independentSRVArraySlices;
+		bool							m_independentSRVMIPs;
+		bool							m_independentUAVMIPs;
+
+	public:
 		Texture();
 		virtual ~Texture();
+
+		// if true, then each array slice will get a unique rendertarget
+		void RequestIndependentRenderTargetArraySlices(bool value);
+		// if true, then each face of the cubemap will get a unique rendertarget
+		void RequestIndependentRenderTargetCubemapFaces(bool value);
+		// if true, then each array slice will get a unique shader resource
+		void RequestIndependentShaderResourceArraySlices(bool value);
+		// if true, then each miplevel will get unique shader resource
+		void RequestIndependentShaderResourcesForMIPs(bool value);
+		// if true, then each miplevel will get unique unordered access resource
+		void RequestIndependentUnorderedAccessResourcesForMIPs(bool value);
 	};
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -
@@ -75,7 +97,8 @@ namespace Graphics
 	class Texture2D : public Texture
 	{
 	public:
-		D3D12_CPU_DESCRIPTOR_HANDLE*	m_dsv;
+		D3D12_CPU_DESCRIPTOR_HANDLE*			  m_dsv;
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE*> m_additionalDSVs;
 
 	public:
 		Texture2D();

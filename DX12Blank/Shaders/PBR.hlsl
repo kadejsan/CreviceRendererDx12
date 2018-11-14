@@ -106,7 +106,7 @@ float4 ps_main(VertexOut pin) : SV_Target
 {
 	float4 albedo = Albedo.Sample(Sampler, pin.TexCoord);
 	float roughness = Roughness.Sample(Sampler, pin.TexCoord).r;
-	float metalness = Metalness.Sample(Sampler, pin.TexCoord).r;
+	float metalness = 0.0f;// Metalness.Sample(Sampler, pin.TexCoord).r;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
 	float3 Lo = normalize(gEyePosition.xyz - pin.Pos);

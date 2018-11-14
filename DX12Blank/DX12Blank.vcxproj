@@ -84,7 +84,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -115,7 +115,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -141,6 +141,7 @@
     <ClInclude Include="GraphicsDescriptors.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GraphicsResource.h" />
+    <ClInclude Include="Image.h" />
     <ClInclude Include="Include_DX12.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MathHelper.h" />
@@ -168,6 +169,8 @@
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
+    <ClCompile Include="Image.cpp" />
+    <ClCompile Include="Lib\stb\src\libstb.c" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="MathHelper.cpp" />
@@ -194,6 +197,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PBR.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Skybox.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Equirect2Cube.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -48,7 +48,7 @@ private:
 		float4x4 Scene		   = MathHelper::Identity4x4();
 		float4x4 WorldViewProj = MathHelper::Identity4x4();
 	};
-	Graphics::GPUBuffer*		m_objCB;
+	GPUBuffer*		m_objCB;
 
 	static const int MaxLights = 3;
 	struct Light
@@ -62,7 +62,7 @@ private:
 		Light  Lights[MaxLights];
 		UINT   LightsCount;
 	};
-	Graphics::GPUBuffer*		m_shadingCB;
+	GPUBuffer*		m_shadingCB;
 
 	enum ETextureType
 	{
@@ -72,6 +72,11 @@ private:
 		ETT_Metalness,
 		ETT_Max
 	};
-	Graphics::Texture2D*		m_textures[ETT_Max];
-	RenderObject				m_model;
+	Texture2D*		m_textures[ETT_Max];
+	RenderObject	m_model;
+	RenderObject	m_skybox;
+
+	Texture2D*		m_envTexture;
+	Texture2D*		m_envTextureUnfiltered;
+	Texture2D*		m_envTextureEquirect;
 };

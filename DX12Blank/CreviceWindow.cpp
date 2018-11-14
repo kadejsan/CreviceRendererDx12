@@ -47,23 +47,6 @@ void CreviceWindow::OnRender()
 {
 	GetDevice().PresentBegin();
 
-	if (m_wireframe)
-		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(
-#ifdef PBR_MODEL
-			ePSO::PBRWireframe
-#else
-			ePSO::SimpleColorWireframe
-#endif
-		));
-	else
-		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(
-#ifdef PBR_MODEL
-			ePSO::PBRSolid
-#else
-			ePSO::SimpleColorSolid
-#endif
-		));
-
 	GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objCB, 0);
 	GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_shadingCB, 0);
 
@@ -71,6 +54,11 @@ void CreviceWindow::OnRender()
 		ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
 #ifdef PBR_MODEL
+		if (m_wireframe)
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRWireframe));
+		else
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRSolid));
+
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Albedo], 0);
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Normal], 1);
 		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Roughness], 2);
@@ -79,7 +67,21 @@ void CreviceWindow::OnRender()
 
 		UpdateConstantBuffer(m_model);
 		m_model.m_mesh->Draw(GetDevice(), m_model.m_world, GetCamera()->m_frustum);
+
+		if (m_wireframe)
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxWireframe));
+		else
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxSolid));
+
+		UpdateConstantBuffer(m_skybox);
+		Renderer::GGraphicsDevice->BindResource(PS, m_envTextureUnfiltered, 0);
+		m_skybox.m_mesh->Draw(GetDevice(), m_skybox.m_world, GetCamera()->m_frustum);
 #else
+		if (m_wireframe)
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SimpleColorWireframe));
+		else
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SimpleColorSolid));
+
 		GetDevice().BindSampler(SHADERSTAGE::PS, m_samplerCache.GetSamplerState(eSamplerState::LinearClamp), 0);
 
  		for (auto o : m_renderObjects)
@@ -104,6 +106,8 @@ void CreviceWindow::OnDestroy()
 	// PBR Model
 	for (int i = 0; i < ETT_Max; ++i)
 		delete m_textures[i];
+
+	delete m_envTexture;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -181,10 +185,36 @@ void CreviceWindow::InitializeRenderObjects()
 
 void CreviceWindow::InitializeTextures()
 {
-	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_A.png", &m_textures[ETT_Albedo], false);
-	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_N.png", &m_textures[ETT_Normal], false);
-	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_R.png", &m_textures[ETT_Roughness], false);
-	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_M.png", &m_textures[ETT_Metalness], false);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_A.png", &m_textures[ETT_Albedo], false);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_N.png", &m_textures[ETT_Normal], false);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_R.png", &m_textures[ETT_Roughness], false);
+	GetDevice().CreateTextureFromFile("Data/Textures/cerberus_M.png", &m_textures[ETT_Metalness], false);
+
+	TextureDesc desc;
+	desc.Width = 1024; desc.Height = 1024;
+	desc.ArraySize = 6;
+	desc.Format = FORMAT_R16G16B16A16_FLOAT;
+	desc.BindFlags = BIND_SHADER_RESOURCE;
+	GetDevice().CreateTexture2D(desc, nullptr, &m_envTexture);
+	{
+		// Unfiltered environment cube map (temporary).
+		desc.BindFlags |= BIND_UNORDERED_ACCESS;
+		desc.MiscFlags = RESOURCE_MISC_TEXTURECUBE;
+		GetDevice().CreateTexture2D(desc, nullptr, &m_envTextureUnfiltered);
+
+		// Load & convert equirectangular environment map to cubemap texture
+		{
+			GetDevice().CreateTextureFromFile("Data/Environments/environment.hdr", &m_envTextureEquirect, false);
+
+			GetDevice().BindComputePSO(m_psoCache.GetPSO(Equirect2Cube));
+
+			GetDevice().BindSampler(SHADERSTAGE::CS, m_samplerCache.GetSamplerState(eSamplerState::LinearWrap), 0);
+			GetDevice().TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
+			GetDevice().BindResource(SHADERSTAGE::CS, m_envTextureEquirect, 0);
+			GetDevice().BindUnorderedAccessResource(m_envTextureUnfiltered, 0);
+			GetDevice().Dispatch(m_envTexture->m_desc.Width / 32, m_envTexture->m_desc.Height / 32, 6);
+		}
+	}
 }
 
 void CreviceWindow::InitializeMesh()
@@ -194,6 +224,12 @@ void CreviceWindow::InitializeMesh()
 	m_model.m_world._11 *= 0.1f;
 	m_model.m_world._22 *= 0.1f;
 	m_model.m_world._33 *= 0.1f;
+
+	m_skybox.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/skybox.obj");
+	m_skybox.m_world = MathHelper::Identity4x4();
+	m_skybox.m_world._11 *= 10.0f;
+	m_skybox.m_world._22 *= 10.0f;
+	m_skybox.m_world._33 *= 10.0f;
 }
 
 void CreviceWindow::InitializeConstantBuffers()
@@ -260,7 +296,7 @@ void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 		const Camera* cam = GetCamera();
 
 		static Light lights[MaxLights] = {
-			{ float3(-1, 0, 0), 1.0f },
+			{ float3(0, 0, -1), 1.0f },
 			{ float3(1, 0, 0), 1.0f },
 			{ float3(0, -1, 0), 1.0f }
 		};

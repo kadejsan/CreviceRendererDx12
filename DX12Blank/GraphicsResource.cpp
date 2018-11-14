@@ -13,7 +13,15 @@ namespace Graphics
 	{
 		m_resource.Reset();
 		SAFE_DELETE(m_srv);
+		for (auto& x : m_additionalSRVs)
+		{
+			SAFE_DELETE(x);
+		}
 		SAFE_DELETE(m_uav);
+		for (auto& x : m_additionalUAVs)
+		{
+			SAFE_DELETE(x);
+		}
 	}
 
 	// - - - - - - - - - - - - - - - - - - - -
@@ -32,12 +40,42 @@ namespace Graphics
 
 	Texture::Texture()
 		: GPUResource()
+		, m_independentRTVArraySlices(false)
+		, m_independentRTVCubemapFaces(false)
+		, m_independentSRVArraySlices(false)
+		, m_independentSRVMIPs(false)
+		, m_independentUAVMIPs(false)
 	{
 		SAFE_INIT(m_rtv);
 	}
 	Texture::~Texture()
 	{
 		SAFE_DELETE(m_rtv);
+		for (auto& x : m_additionalRTVs)
+		{
+			SAFE_DELETE(x);
+		}
+	}
+
+	void Texture::RequestIndependentRenderTargetArraySlices(bool value)
+	{
+		m_independentRTVArraySlices = value;
+	}
+	void Texture::RequestIndependentRenderTargetCubemapFaces(bool value)
+	{
+		m_independentRTVCubemapFaces = value;
+	}
+	void Texture::RequestIndependentShaderResourceArraySlices(bool value)
+	{
+		m_independentSRVArraySlices = value;
+	}
+	void Texture::RequestIndependentShaderResourcesForMIPs(bool value)
+	{
+		m_independentSRVMIPs = value;
+	}
+	void Texture::RequestIndependentUnorderedAccessResourcesForMIPs(bool value)
+	{
+		m_independentUAVMIPs = value;
 	}
 
 	// - - - - - - - - - - - - - - - - - - - -
@@ -50,6 +88,10 @@ namespace Graphics
 	Texture2D::~Texture2D()
 	{
 		SAFE_DELETE(m_dsv);
+		for (auto& x : m_additionalDSVs)
+		{
+			SAFE_DELETE(x);
+		}
 	}
 
 	// - - - - - - - - - - - - - - - - - - - -

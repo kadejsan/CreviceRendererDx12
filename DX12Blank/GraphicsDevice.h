@@ -37,6 +37,7 @@ namespace Graphics
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) = 0;
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
+		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) = 0;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) = 0;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) = 0;
@@ -44,8 +45,11 @@ namespace Graphics
 		virtual void DrawInstanced(int vertexCount, int instanceCount, UINT startVertexLocation, UINT startInstanceLocation) = 0;
 		virtual void DrawIndexedInstanced(int indexCount, int instanceCount, UINT startIndexLocation, UINT baseVertexLocation, UINT startInstanceLocation) = 0;
 
-		virtual void CreateBlob(UINT byteSize, CPUBuffer* buffer) = 0;
+		virtual void Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ) = 0;
+
+		virtual void CreateBlob(UINT64 byteSize, CPUBuffer* buffer) = 0;
 		virtual void CreateBuffer(const GPUBufferDesc& desc, const SubresourceData* initialData, GPUBuffer* buffer) = 0;
+		virtual void CreateTexture2D(const TextureDesc& desc, const SubresourceData* initialData, Texture2D** texture2D) = 0;
 		virtual void CreateShader(const std::wstring& filename, BaseShader* shader) = 0;
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) = 0;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) = 0;
@@ -60,7 +64,6 @@ namespace Graphics
 		virtual void InvalidateBufferAccess(GPUBuffer* buffer) = 0;
 
 		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) = 0;
-		virtual void CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels = 0) = 0;
 
 		virtual void BeginProfilerBlock(const char* name) = 0;
 		virtual void EndProfilerBlock() = 0;

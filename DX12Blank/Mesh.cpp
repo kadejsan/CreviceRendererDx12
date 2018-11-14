@@ -34,7 +34,7 @@ void Mesh::Draw(Graphics::GraphicsDevice& device, const float4x4& world, const F
 	}
 }
 
-void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, UINT stride)
+void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride)
 {
 	device.CreateBlob(size, &m_vertexBufferCPU);
 	CopyMemory(m_vertexBufferCPU.m_blob->GetBufferPointer(), data, size);
@@ -44,7 +44,7 @@ void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UIN
 		GPUBufferDesc bd;
 		ZeroMemory(&bd, sizeof(bd));
 		bd.Usage = USAGE_DEFAULT;
-		bd.ByteWidth = size;
+		bd.ByteWidth = (UINT)size;
 		bd.BindFlags = BIND_VERTEX_BUFFER;
 		bd.CpuAccessFlags = 0;
 		bd.StructureByteStride = stride;
@@ -61,7 +61,7 @@ void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UIN
 	}
 }
 
-void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, FORMAT format)
+void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, FORMAT format)
 {
 	device.CreateBlob(size, &m_indexBufferCPU);
 	CopyMemory(m_indexBufferCPU.m_blob->GetBufferPointer(), data, size);
@@ -71,7 +71,7 @@ void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT
 		GPUBufferDesc bd;
 		ZeroMemory(&bd, sizeof(bd));
 		bd.Usage = USAGE_DEFAULT;
-		bd.ByteWidth = size;
+		bd.ByteWidth = (UINT)size;
 		bd.BindFlags = BIND_INDEX_BUFFER;
 		bd.CpuAccessFlags = 0;
 		bd.Format = format;
@@ -139,7 +139,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 	}
 
 	UINT stride = sizeof(Vertex);
-	CreateVertexBuffers(device, vertices.data(), vertices.size()*stride, stride);
+	CreateVertexBuffers(device, vertices.data(), vertices.size()*(UINT64)stride, stride);
 
 	std::vector<UINT> indices;
 	indices.reserve(mesh->mNumFaces * 3);
@@ -152,7 +152,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 		indices.push_back(mesh->mFaces[i].mIndices[2]);
 	}
 
-	CreateIndexBuffers(device, indices.data(), indices.size() * sizeof(UINT), FORMAT_R32_UINT);
+	CreateIndexBuffers(device, indices.data(), indices.size() * (UINT64)sizeof(UINT), FORMAT_R32_UINT);
 
 	Submesh submesh;
 	submesh.IndexCount = (UINT)indices.size();

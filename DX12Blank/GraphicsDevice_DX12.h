@@ -49,6 +49,7 @@ namespace Graphics
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
+		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) override;
@@ -56,8 +57,11 @@ namespace Graphics
 		virtual void DrawInstanced(int vertexCount, int instanceCount, UINT startVertexLocation, UINT startInstanceLocation) override;
 		virtual void DrawIndexedInstanced(int indexCount, int instanceCount, UINT startIndexLocation, UINT baseVertexLocation, UINT startInstanceLocation) override;
 
-		virtual void CreateBlob(UINT byteSize, CPUBuffer* buffer) override;
+		virtual void Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ) override;
+
+		virtual void CreateBlob(UINT64 byteSize, CPUBuffer* buffer) override;
 		virtual void CreateBuffer(const GPUBufferDesc& desc, const SubresourceData* initialData, GPUBuffer* buffer) override;
+		virtual void CreateTexture2D(const TextureDesc& desc, const SubresourceData* initialData, Texture2D** texture2D) override;
 		virtual void CreateShader(const std::wstring& filename, BaseShader* shader) override;
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) override;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) override;
@@ -72,7 +76,6 @@ namespace Graphics
 		virtual void InvalidateBufferAccess(GPUBuffer* buffer) override;
 
 		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) override;
-		virtual void CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels = 0) override;
 
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();
@@ -100,6 +103,7 @@ namespace Graphics
 		void CreateNullResources(ComPtr<ID3D12Device> device);
 		
 		void SetupForDraw();
+		void SetupForDispatch();
 
 		inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return Frames[m_frameIndex].GetCommandList(); }
 		inline UINT64 GetFenceValue() { return Frames[m_frameIndex].GetFenceValue(); }
