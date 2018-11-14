@@ -63,6 +63,9 @@ private:
 		float4 EyePosition = float4(0, 0, 0, 0);
 		Light  Lights[MaxLights];
 		UINT   LightsCount;
+		float3 Color;
+		float  Roughness;
+		float  Metalness;
 	};
 	GPUBuffer*		m_shadingCB;
 
@@ -81,7 +84,13 @@ private:
 		ETT_Max
 	};
 	Texture2D*		m_textures[ETT_Max];
-	RenderObject	m_model;
+	enum EModelType
+	{
+		EMT_Sphere,
+		EMT_Cerberus,
+		EMT_Max
+	};
+	RenderObject	m_model[EMT_Max];
 	RenderObject	m_skybox;
 
 	Texture2D*		m_envTexture;

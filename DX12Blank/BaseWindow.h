@@ -50,8 +50,6 @@ protected:
 	UINT32 m_height;
 	float  m_aspectRatio;
 
-	BOOL   m_wireframe;
-
 	bool   m_isPaused = false;			// is the application paused?
 	bool   m_isMinimized = false;		// is the application minimized?
 	bool   m_isMaximized = false;		// is the application maximized?

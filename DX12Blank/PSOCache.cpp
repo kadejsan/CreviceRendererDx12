@@ -88,6 +88,19 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	m_cacheGraphics[PBRWireframe] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRWireframe].get());
 
+	// PBR Simple
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\PBRSimple.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\PBRSimple.hlsl", psoDesc.PS);
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	m_cacheGraphics[PBRSimpleSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRSimpleSolid].get());
+
+	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
+	m_cacheGraphics[PBRSimpleWireframe] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRSimpleWireframe].get());
+
 	// Skybox
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();

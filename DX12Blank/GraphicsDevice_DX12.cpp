@@ -13,6 +13,10 @@
 # define USE_PIX
 #include <pix3.h>
 
+#define USE_IMGUI
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+
 namespace Graphics
 {
 	// Local Helpers:
@@ -1336,6 +1340,7 @@ namespace Graphics
 
 			m_rtvHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, st_frameCount);
 			m_dsvHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 1);
+			m_srvUIHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 1);
 
 			m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			m_dsvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -1380,6 +1385,11 @@ namespace Graphics
 		}
 
 		InitializeDownsamplePSOs();
+
+		ImGui_ImplDX12_Init(m_device.Get(), st_frameCount,
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			m_srvUIHeap->GetCPUDescriptorHandleForHeapStart(),
+			m_srvUIHeap->GetGPUDescriptorHandleForHeapStart());
 
 		m_isInitialized = true;
 	}
@@ -3937,4 +3947,13 @@ namespace Graphics
 	{
 		::PIXSetMarker(GetCommandList().Get(), 0, name);
 	}
+
+	void GraphicsDevice_DX12::FlushUI()
+	{
+		ID3D12DescriptorHeap* heap = m_srvUIHeap.Get();
+		GetCommandList()->SetDescriptorHeaps(1, &heap);
+		ImGui::Render();
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetCommandList().Get());
+	}
+
 }

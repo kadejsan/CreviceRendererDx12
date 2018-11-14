@@ -31,6 +31,9 @@
     <Filter Include="Engine\Lib">
       <UniqueIdentifier>{e44f87bf-7df1-4cdb-b708-cb75f5a90c8f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Lib\imgui">
+      <UniqueIdentifier>{076ceaa5-d3c4-471c-9f1f-daa1dc476098}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -135,6 +138,33 @@
     <ClInclude Include="GraphicsAPI.h">
       <Filter>Engine\Graphics\GpuApi</Filter>
     </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imconfig.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imgui.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imgui_impl_dx12.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imgui_impl_win32.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imgui_internal.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imstb_rectpack.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imstb_textedit.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Lib\imgui\include\imstb_truetype.h">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="UIContext.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -218,6 +248,24 @@
     <ClCompile Include="DepthTarget.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Lib\imgui\src\imgui.cpp">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Lib\imgui\src\imgui_draw.cpp">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Lib\imgui\src\imgui_impl_dx12.cpp">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Lib\imgui\src\imgui_impl_win32.cpp">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Lib\imgui\src\imgui_widgets.cpp">
+      <Filter>Engine\Lib\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="UIContext.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SimpleColor.hlsl">
@@ -255,6 +303,9 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\Tonemapping.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\PBRSimple.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

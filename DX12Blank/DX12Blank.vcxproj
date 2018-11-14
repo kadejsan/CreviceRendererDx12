@@ -84,7 +84,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -115,7 +115,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -145,6 +145,14 @@
     <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Include_DX12.h" />
+    <ClInclude Include="Lib\imgui\include\imconfig.h" />
+    <ClInclude Include="Lib\imgui\include\imgui.h" />
+    <ClInclude Include="Lib\imgui\include\imgui_impl_dx12.h" />
+    <ClInclude Include="Lib\imgui\include\imgui_impl_win32.h" />
+    <ClInclude Include="Lib\imgui\include\imgui_internal.h" />
+    <ClInclude Include="Lib\imgui\include\imstb_rectpack.h" />
+    <ClInclude Include="Lib\imgui\include\imstb_textedit.h" />
+    <ClInclude Include="Lib\imgui\include\imstb_truetype.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="Mesh.h" />
@@ -157,6 +165,7 @@
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="TextRenderer.h" />
     <ClInclude Include="Types.h" />
+    <ClInclude Include="UIContext.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WICTextureLoader12.h" />
     <ClInclude Include="Win32Application.h" />
@@ -175,6 +184,11 @@
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
     <ClCompile Include="Image.cpp" />
+    <ClCompile Include="Lib\imgui\src\imgui.cpp" />
+    <ClCompile Include="Lib\imgui\src\imgui_draw.cpp" />
+    <ClCompile Include="Lib\imgui\src\imgui_impl_dx12.cpp" />
+    <ClCompile Include="Lib\imgui\src\imgui_impl_win32.cpp" />
+    <ClCompile Include="Lib\imgui\src\imgui_widgets.cpp" />
     <ClCompile Include="Lib\stb\src\libstb.c" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Material.cpp" />
@@ -187,6 +201,7 @@
     <ClCompile Include="SamplerCache.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
+    <ClCompile Include="UIContext.cpp" />
     <ClCompile Include="WICTextureLoader12.cpp" />
     <ClCompile Include="Win32Application.cpp" />
   </ItemGroup>
@@ -244,6 +259,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Tonemapping.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PBRSimple.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -12,6 +12,8 @@ enum eGPSO
 {
 	SimpleColorSolid,
 	SimpleColorWireframe,
+	PBRSimpleSolid,
+	PBRSimpleWireframe,
 	PBRSolid,
 	PBRWireframe,
 	SkyboxSolid,

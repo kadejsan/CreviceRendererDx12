@@ -83,6 +83,8 @@ namespace Graphics
 		virtual void EndProfilerBlock() = 0;
 		virtual void SetMarker(const char* name) = 0;
 
+		virtual void FlushUI() = 0;
+
 		inline bool IsInitialized() const { return m_isInitialized; }
 		inline UINT32 GetCurrentFrameIndex() const { return m_frameIndex; }
 

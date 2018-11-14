@@ -3,6 +3,10 @@
 #include "BaseWindow.h"
 #include "StringUtils.h"
 
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
+
 HWND Win32Application::m_hwnd = nullptr;
 
 int Win32Application::Run( BaseWindow* window, HINSTANCE hInstance, int nCmdShow )
@@ -40,6 +44,18 @@ int Win32Application::Run( BaseWindow* window, HINSTANCE hInstance, int nCmdShow
 		hInstance,
 		window );
 
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+
+	// Setup Platform/Renderer bindings
+	ImGui_ImplWin32_Init(m_hwnd);
+
+	// Setup Style
+	ImGui::StyleColorsDark();
+
 	// Initialize window. OnInit is defined in each child-implementation of BaseWindow.
 	window->OnInit();
 
@@ -63,9 +79,13 @@ int Win32Application::Run( BaseWindow* window, HINSTANCE hInstance, int nCmdShow
 	return static_cast<char>( msg.wParam );
 }
 
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM wParam, LPARAM lParam )
 {
 	BaseWindow* window = reinterpret_cast<BaseWindow*>( GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
+
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+		return true;
 
 	switch( message )
 	{
@@ -143,6 +163,11 @@ LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM
 		{
 			if( window )
 			{
+				// Start the Dear ImGui frame
+				ImGui_ImplDX12_NewFrame();
+				ImGui_ImplWin32_NewFrame();
+				ImGui::NewFrame();
+
 				window->OnUpdate();
 				window->OnRender();
 			}
@@ -151,6 +176,8 @@ LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM
 
 		case WM_SIZE:
 		{
+			ImGui_ImplDX12_InvalidateDeviceObjects();
+
 			RECT clientRect = {};
 			::GetClientRect( m_hwnd, &clientRect );
 
@@ -159,6 +186,8 @@ LRESULT CALLBACK Win32Application::WindowProc( HWND hWnd, UINT32 message, WPARAM
 
 			// TODO: fix it
 			// Resize( width, height );
+
+			ImGui_ImplDX12_CreateDeviceObjects();
 		}
 		return 0;
 

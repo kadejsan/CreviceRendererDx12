@@ -95,6 +95,8 @@ namespace Graphics
 		virtual void EndProfilerBlock();
 		virtual void SetMarker(const char* name);
 
+		virtual void FlushUI() override;
+
 	private:
 		void GetHardwareAdapter( IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter );
 		bool CheckTearingSupport(ComPtr<IDXGIFactory4> factory4);
@@ -131,6 +133,7 @@ namespace Graphics
 		ComPtr<ID3D12CommandQueue>			m_commandQueue;
 		ComPtr<ID3D12DescriptorHeap>		m_rtvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
+		ComPtr<ID3D12DescriptorHeap>		m_srvUIHeap;
 
 		ComPtr<ID3D12RootSignature>			m_graphicsRootSig;
 		ComPtr<ID3D12RootSignature>			m_computeRootSig;

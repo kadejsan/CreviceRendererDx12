@@ -10,7 +10,6 @@ BaseWindow::BaseWindow( std::string windowName )
 	, m_useWarpDevice( false )
 	, m_width( 1280 )
 	, m_height( 720 )
-	, m_wireframe(false)
 {
 	m_camera = new CameraArcBall(AspectRatio());
 	m_camera->Update();
@@ -32,10 +31,7 @@ void BaseWindow::OnUpdate()
 
 void BaseWindow::OnKeyDown(UINT8 key)
 {
-	if (GetAsyncKeyState('2') & 0x8000)
-		m_wireframe = true;
-	else
-		m_wireframe = false;
+
 }
 
 void BaseWindow::OnMouseDown(WPARAM btnState, int x, int y)

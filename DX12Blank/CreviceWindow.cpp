@@ -7,6 +7,11 @@
 #include "Material.h"
 #include "Camera.h"
 #include "TextRenderer.h"
+#include "UIContext.h"
+
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
 
 #define PBR_MODEL 1
 
@@ -47,6 +52,8 @@ void CreviceWindow::OnUpdate()
 
 void CreviceWindow::OnRender()
 {
+	UIContext::DrawUI();
+
 	GetDevice().PresentBegin();
 
 	GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objCB, 0);
@@ -56,10 +63,10 @@ void CreviceWindow::OnRender()
 		ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
 #if PBR_MODEL
-		if (m_wireframe)
-			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRWireframe));
+		if (UIContext::Wireframe)
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleWireframe : eGPSO::PBRWireframe));
 		else
-			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::PBRSolid));
+			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid));
 
 		GPUResource* textures[] = { 
 			m_textures[ETT_Albedo],
@@ -75,10 +82,11 @@ void CreviceWindow::OnRender()
 
 		m_frameBuffer.Activate();
 
-		UpdateConstantBuffer(m_model);
-		m_model.m_mesh->Draw(GetDevice(), m_model.m_world, GetCamera()->m_frustum);
-
-		if (m_wireframe)
+		const RenderObject& model = m_model[UIContext::PBRModel];
+		UpdateConstantBuffer(model);
+		model.m_mesh->Draw(GetDevice(), model.m_world, GetCamera()->m_frustum);
+		
+		if (UIContext::Wireframe)
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxWireframe));
 		else
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SkyboxSolid));
@@ -97,7 +105,7 @@ void CreviceWindow::OnRender()
 		GetDevice().DrawInstanced(3, 1, 0, 0);
 
 #else
-		if (m_wireframe)
+		if (UIContext::Wireframe)
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SimpleColorWireframe));
 		else
 			GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(eGPSO::SimpleColorSolid));
@@ -114,6 +122,7 @@ void CreviceWindow::OnRender()
 	}
 
 	ScopedTimer::RenderPerfCounters();
+	GetDevice().FlushUI();
 
 	GetDevice().PresentEnd();
 }
@@ -321,12 +330,14 @@ void CreviceWindow::InitializeTextures()
 
 void CreviceWindow::InitializeMesh()
 {
-	m_model.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
-	//m_model.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/sphere.obj");
-	m_model.m_world = MathHelper::Identity4x4();
-	m_model.m_world._11 *= 0.1f;
-	m_model.m_world._22 *= 0.1f;
-	m_model.m_world._33 *= 0.1f;
+	m_model[EMT_Sphere].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/sphere.obj");
+	m_model[EMT_Sphere].m_world = MathHelper::Identity4x4();
+	m_model[EMT_Sphere].m_world._11 *= 0.1f;
+	m_model[EMT_Sphere].m_world._22 *= 0.1f;
+	m_model[EMT_Sphere].m_world._33 *= 0.1f;
+
+	m_model[EMT_Cerberus].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
+	m_model[EMT_Cerberus].m_world = m_model[EMT_Sphere].m_world;
 
 	m_skybox.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/skybox.obj");
 	m_skybox.m_world = MathHelper::Identity4x4();
@@ -437,6 +448,10 @@ void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 			shadingCB.Lights[i].LightRadiance = lights[i].LightRadiance;
 		}
 		shadingCB.LightsCount = lightsCount;
+		
+		shadingCB.Color = float3(UIContext::Color);
+		shadingCB.Roughness = UIContext::Roughness;
+		shadingCB.Metalness = UIContext::Metalness;
 
 		GetDevice().UpdateBuffer(m_shadingCB, &shadingCB, sizeof(ShadingConstants));
 	}
