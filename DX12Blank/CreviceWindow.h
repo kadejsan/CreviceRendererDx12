@@ -1,18 +1,20 @@
 #pragma once
 
 #include "BaseWindow.h"
-#include "DeviceResources.h"
+#include "GraphicsDevice.h"
 
 class CreviceWindow : public BaseWindow
 {
 public:
-	CreviceWindow( std::wstring name );
+	CreviceWindow( std::string name );
 
 	virtual void OnInit();
 	virtual void OnUpdate();
 	virtual void OnRender();
 	virtual void OnDestroy();
 
+	GraphicsDevice& GetDevice() { assert(m_graphicsDevice != nullptr); return *m_graphicsDevice; }
+
 private:
-	DX::DeviceResources m_deviceResources;
+	GraphicsDevice* m_graphicsDevice;
 };

@@ -36,4 +36,14 @@
 
 #include <wrl.h>
 
-#define LOG( str, ... ) char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); OutputDebugString(buffer);
+#ifdef _DEBUG
+#	include "Initguid.h"
+#	include "DXGIDebug.h"
+#endif
+
+#define LOG( str, ... ) { char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); OutputDebugString(buffer); }
+
+#define SAFE_INIT(a) (a) = nullptr;
+#define SAFE_RELEASE(a) if((a)!=nullptr){(a)->Release();(a)=nullptr;}
+#define SAFE_DELETE(a) if((a)!=nullptr){delete (a);(a)=nullptr;}
+#define SAFE_DELETE_ARRAY(a) if((a)!=nullptr){delete[](a);(a)=nullptr;}

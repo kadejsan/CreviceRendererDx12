@@ -4,6 +4,6 @@
 _Use_decl_annotations_
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-	CreviceWindow app( L"Crevice 3D DX12" );
+	CreviceWindow app( "Crevice 3D DX12" );
 	return Win32Application::Run( &app, hInstance, nCmdShow );
 }

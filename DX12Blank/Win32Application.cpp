@@ -29,7 +29,7 @@ int Win32Application::Run( BaseWindow* window, HINSTANCE hInstance, int nCmdShow
 	// Create the window and store a handle to it.
 	m_hwnd = CreateWindow(
 		windowClass.lpszClassName,
-		utf16ToUTF8( window->GetTitle() ).c_str(),
+		window->GetTitle(),
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT,
 		CW_USEDEFAULT,
@@ -44,6 +44,7 @@ int Win32Application::Run( BaseWindow* window, HINSTANCE hInstance, int nCmdShow
 	window->OnInit();
 
 	ShowWindow( m_hwnd, nCmdShow );
+	UpdateWindow( m_hwnd );
 
 	// Main app loop
 	MSG msg = {};
