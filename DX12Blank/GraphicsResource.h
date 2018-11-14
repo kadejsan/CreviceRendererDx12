@@ -5,7 +5,7 @@
 
 using namespace Microsoft::WRL;
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class GPUResource
 	{
@@ -36,14 +36,50 @@ namespace GraphicsTypes
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -
 
+	class GPURingBuffer : public GPUBuffer
+	{
+	public:
+		size_t	m_byteOffset;
+		UINT64	m_residentFrame;
+	public:
+		GPURingBuffer() 
+			: m_byteOffset(0)
+			, m_residentFrame(0) 
+		{}
+
+		virtual ~GPURingBuffer() 
+		{}
+
+		// The next appending to buffer will start at this offset
+		size_t GetByteOffset() { return m_byteOffset; }
+		UINT64 GetResidentFrame() { return m_residentFrame; }
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
 	class Texture : public GPUResource
 	{
 	public:
-		D3D12_CPU_DESCRIPTOR_HANDLE * m_rtv;
+		D3D12_CPU_DESCRIPTOR_HANDLE*	m_rtv;
+
+	public:
+		TextureDesc						m_desc;
 
 	public:
 		Texture();
 		virtual ~Texture();
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
+	class Texture2D : public Texture
+	{
+	public:
+		D3D12_CPU_DESCRIPTOR_HANDLE*	m_dsv;
+
+	public:
+		Texture2D();
+		virtual ~Texture2D();
 	};
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -
@@ -109,6 +145,22 @@ namespace GraphicsTypes
 	class ComputeShader : public BaseShader
 	{
 		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::CS; }
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
+	class Sampler
+	{
+	public:
+		D3D12_CPU_DESCRIPTOR_HANDLE*	m_resource;
+
+		SamplerDesc						m_desc;
+	public:
+		Sampler();
+		~Sampler();
+
+		bool IsValid() { return m_resource != nullptr; }
+		SamplerDesc GetDesc() { return m_desc; }
 	};
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -

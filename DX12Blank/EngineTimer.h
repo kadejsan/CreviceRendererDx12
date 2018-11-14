@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Graphics
+{
+	class GraphicsDevice;
+}
+
 class EngineTimer
 {
 public:
@@ -16,8 +21,10 @@ public:
 	void Stop();  // call when paused
 	void Tick();  // call every frame
 
+	static double st_secondsPerCount;
+	static double st_milisecondsPerCount;
+
 private:
-	double m_secondsPerCount;
 	double m_deltaTime;
 
 	UINT64 m_baseTime;
@@ -27,4 +34,21 @@ private:
 	UINT64 m_currTime;
 
 	bool   m_isStopped;
+};
+
+class ScopedTimer
+{
+public:
+	ScopedTimer(const char* name, Graphics::GraphicsDevice* device);
+	~ScopedTimer();
+
+	static void RenderPerfCounters();
+
+private:
+	UINT64 m_startQuery;
+	std::string m_name;
+	Graphics::GraphicsDevice* m_device;
+
+	static std::unordered_map<std::string, double> st_Perf;
+	static std::unordered_map<std::string, UINT> st_PerfCounters;
 };

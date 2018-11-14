@@ -8,7 +8,7 @@ public:
 	Material();
 	~Material();
 
-	GraphicsTypes::VertexShader*	m_vs;
-	GraphicsTypes::GeometryShader*	m_gs;
-	GraphicsTypes::PixelShader*		m_ps;
+	Graphics::VertexShader*	m_vs;
+	Graphics::GeometryShader*	m_gs;
+	Graphics::PixelShader*		m_ps;
 };

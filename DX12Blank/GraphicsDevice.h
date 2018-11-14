@@ -5,7 +5,7 @@
 
 class BaseWindow;
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class GraphicsDevice
 	{
@@ -36,6 +36,8 @@ namespace GraphicsTypes
 		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) = 0;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) = 0;
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
+		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
+		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) = 0;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) = 0;
 		virtual void DrawIndexed(int indexCount, UINT startIndexLocation, UINT baseVertexLocation) = 0;
@@ -48,11 +50,21 @@ namespace GraphicsTypes
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) = 0;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) = 0;
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) = 0;
+		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) = 0;
 
 		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) = 0;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) = 0;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) = 0;
+		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) = 0;
+		virtual void InvalidateBufferAccess(GPUBuffer* buffer) = 0;
+
+		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) = 0;
+		virtual void CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels = 0) = 0;
+
+		virtual void BeginProfilerBlock(const char* name) = 0;
+		virtual void EndProfilerBlock() = 0;
+		virtual void SetMarker(const char* name) = 0;
 
 		inline bool IsInitialized() const { return m_isInitialized; }
 		inline UINT32 GetCurrentFrameIndex() const { return m_frameIndex; }

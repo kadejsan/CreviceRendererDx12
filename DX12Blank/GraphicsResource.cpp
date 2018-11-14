@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "GraphicsResource.h"
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	GPUResource::GPUResource()
 	{
@@ -41,4 +41,27 @@ namespace GraphicsTypes
 	}
 
 	// - - - - - - - - - - - - - - - - - - - -
+
+	Texture2D::Texture2D()
+	{
+		SAFE_INIT(m_dsv);
+	}
+
+	Texture2D::~Texture2D()
+	{
+		SAFE_DELETE(m_dsv);
+	}
+
+	// - - - - - - - - - - - - - - - - - - - -
+
+	Sampler::Sampler()
+	{
+		SAFE_INIT(m_resource);
+	}
+
+	Sampler::~Sampler()
+	{
+		SAFE_DELETE(m_resource);
+	}
+
 }

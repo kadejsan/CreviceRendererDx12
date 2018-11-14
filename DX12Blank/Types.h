@@ -6,6 +6,7 @@
 #include <DirectXColors.h>
 
 using namespace DirectX;
+using namespace PackedVector;
 
 typedef XMMATRIX matrix;
 typedef XMFLOAT4X4 float4x4;

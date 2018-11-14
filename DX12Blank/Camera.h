@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MathHelper.h"
+#include "Frustum.h"
 
 class Camera
 {
@@ -24,6 +25,8 @@ public:
 	float3   m_eyePos		= float3(0.0f, 0.0f, 0.0f);
 	float	 m_nearZ		= 1.0f;
 	float	 m_farZ			= 1000.0f;
+
+	Frustum	 m_frustum;
 
 	float	 m_aspectRatio;
 };

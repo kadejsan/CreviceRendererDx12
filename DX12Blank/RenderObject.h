@@ -10,5 +10,5 @@ public:
 	~RenderObject();
 
 	float4x4	m_world = MathHelper::Identity4x4();
-	Mesh*		m_mesh;
+	std::shared_ptr<Mesh> m_mesh;
 };

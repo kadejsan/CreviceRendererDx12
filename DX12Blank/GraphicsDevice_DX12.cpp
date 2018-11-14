@@ -5,8 +5,13 @@
 #include "BaseWindow.h"
 #include "GraphicsDevice_DX12.h"
 #include "GraphicsResource.h"
+#include "DDSTextureLoader12.h"
+#include "WICTextureLoader12.h"
 
-namespace GraphicsTypes
+# define USE_PIX
+#include <pix3.h>
+
+namespace Graphics
 {
 	// Local Helpers:
 
@@ -45,6 +50,147 @@ namespace GraphicsTypes
 	inline D3D12_RESOURCE_STATES ConvertResourceStates(RESOURCE_STATES value)
 	{
 		return static_cast<D3D12_RESOURCE_STATES>(value);
+	}
+	inline D3D12_FILTER ConvertFilter(FILTER value)
+	{
+		switch (value)
+		{
+		case FILTER_MIN_MAG_MIP_POINT:
+			return D3D12_FILTER_MIN_MAG_MIP_POINT;
+			break;
+		case FILTER_MIN_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MIN_POINT_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+			break;
+		case FILTER_MIN_LINEAR_MAG_MIP_POINT:
+			return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+			break;
+		case FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MIN_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MIN_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			break;
+		case FILTER_ANISOTROPIC:
+			return D3D12_FILTER_ANISOTROPIC;
+			break;
+		case FILTER_COMPARISON_MIN_MAG_MIP_POINT:
+			return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+			break;
+		case FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
+			return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+			break;
+		case FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
+			return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+			break;
+		case FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
+			return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+			break;
+		case FILTER_COMPARISON_ANISOTROPIC:
+			return D3D12_FILTER_COMPARISON_ANISOTROPIC;
+			break;
+		case FILTER_MINIMUM_MIN_MAG_MIP_POINT:
+			return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
+			break;
+		case FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR;
+			break;
+		case FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT:
+			return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT;
+			break;
+		case FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MINIMUM_MIN_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
+			break;
+		case FILTER_MINIMUM_ANISOTROPIC:
+			return D3D12_FILTER_MINIMUM_ANISOTROPIC;
+			break;
+		case FILTER_MAXIMUM_MIN_MAG_MIP_POINT:
+			return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
+			break;
+		case FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR;
+			break;
+		case FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT:
+			return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT;
+			break;
+		case FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+			return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+			break;
+		case FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT:
+			return D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+		case FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR:
+			return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
+			break;
+		case FILTER_MAXIMUM_ANISOTROPIC:
+			return D3D12_FILTER_MAXIMUM_ANISOTROPIC;
+			break;
+		default:
+			break;
+		}
+		return D3D12_FILTER_MIN_MAG_MIP_POINT;
+	}
+	inline D3D12_TEXTURE_ADDRESS_MODE ConvertTextureAddressMode(TEXTURE_ADDRESS_MODE value)
+	{
+		switch (value)
+		{
+		case TEXTURE_ADDRESS_WRAP:
+			return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			break;
+		case TEXTURE_ADDRESS_MIRROR:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+			break;
+		case TEXTURE_ADDRESS_CLAMP:
+			return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			break;
+		case TEXTURE_ADDRESS_BORDER:
+			return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			break;
+		case TEXTURE_ADDRESS_MIRROR_ONCE:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+			break;
+		default:
+			break;
+		}
+		return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	}
 	inline DXGI_FORMAT ConvertFormat(FORMAT value)
 	{
@@ -665,7 +811,377 @@ namespace GraphicsTypes
 			break;
 		};
 	}
+	inline FORMAT ConvertFormat_Inv(DXGI_FORMAT value)
+	{
+		switch (value)
+		{
+		case DXGI_FORMAT_UNKNOWN:
+			return FORMAT_UNKNOWN;
+			break;
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+			return FORMAT_R32G32B32A32_TYPELESS;
+			break;
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+			return FORMAT_R32G32B32A32_FLOAT;
+			break;
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+			return FORMAT_R32G32B32A32_UINT;
+			break;
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return FORMAT_R32G32B32A32_SINT;
+			break;
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+			return FORMAT_R32G32B32_TYPELESS;
+			break;
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+			return FORMAT_R32G32B32_FLOAT;
+			break;
+		case DXGI_FORMAT_R32G32B32_UINT:
+			return FORMAT_R32G32B32_UINT;
+			break;
+		case DXGI_FORMAT_R32G32B32_SINT:
+			return FORMAT_R32G32B32_SINT;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+			return FORMAT_R16G16B16A16_TYPELESS;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+			return FORMAT_R16G16B16A16_FLOAT;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+			return FORMAT_R16G16B16A16_UNORM;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+			return FORMAT_R16G16B16A16_UINT;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+			return FORMAT_R16G16B16A16_SNORM;
+			break;
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+			return FORMAT_R16G16B16A16_SINT;
+			break;
+		case DXGI_FORMAT_R32G32_TYPELESS:
+			return FORMAT_R32G32_TYPELESS;
+			break;
+		case DXGI_FORMAT_R32G32_FLOAT:
+			return FORMAT_R32G32_FLOAT;
+			break;
+		case DXGI_FORMAT_R32G32_UINT:
+			return FORMAT_R32G32_UINT;
+			break;
+		case DXGI_FORMAT_R32G32_SINT:
+			return FORMAT_R32G32_SINT;
+			break;
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+			return FORMAT_R32G8X24_TYPELESS;
+			break;
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+			return FORMAT_D32_FLOAT_S8X24_UINT;
+			break;
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+			return FORMAT_R32_FLOAT_X8X24_TYPELESS;
+			break;
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+			return FORMAT_X32_TYPELESS_G8X24_UINT;
+			break;
+		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+			return FORMAT_R10G10B10A2_TYPELESS;
+			break;
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+			return FORMAT_R10G10B10A2_UNORM;
+			break;
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+			return FORMAT_R10G10B10A2_UINT;
+			break;
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+			return FORMAT_R11G11B10_FLOAT;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+			return FORMAT_R8G8B8A8_TYPELESS;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+			return FORMAT_R8G8B8A8_UNORM;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+			return FORMAT_R8G8B8A8_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+			return FORMAT_R8G8B8A8_UINT;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+			return FORMAT_R8G8B8A8_SNORM;
+			break;
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+			return FORMAT_R8G8B8A8_SINT;
+			break;
+		case DXGI_FORMAT_R16G16_TYPELESS:
+			return FORMAT_R16G16_TYPELESS;
+			break;
+		case DXGI_FORMAT_R16G16_FLOAT:
+			return FORMAT_R16G16_FLOAT;
+			break;
+		case DXGI_FORMAT_R16G16_UNORM:
+			return FORMAT_R16G16_UNORM;
+			break;
+		case DXGI_FORMAT_R16G16_UINT:
+			return FORMAT_R16G16_UINT;
+			break;
+		case DXGI_FORMAT_R16G16_SNORM:
+			return FORMAT_R16G16_SNORM;
+			break;
+		case DXGI_FORMAT_R16G16_SINT:
+			return FORMAT_R16G16_SINT;
+			break;
+		case DXGI_FORMAT_R32_TYPELESS:
+			return FORMAT_R32_TYPELESS;
+			break;
+		case DXGI_FORMAT_D32_FLOAT:
+			return FORMAT_D32_FLOAT;
+			break;
+		case DXGI_FORMAT_R32_FLOAT:
+			return FORMAT_R32_FLOAT;
+			break;
+		case DXGI_FORMAT_R32_UINT:
+			return FORMAT_R32_UINT;
+			break;
+		case DXGI_FORMAT_R32_SINT:
+			return FORMAT_R32_SINT;
+			break;
+		case DXGI_FORMAT_R24G8_TYPELESS:
+			return FORMAT_R24G8_TYPELESS;
+			break;
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+			return FORMAT_D24_UNORM_S8_UINT;
+			break;
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+			return FORMAT_R24_UNORM_X8_TYPELESS;
+			break;
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+			return FORMAT_X24_TYPELESS_G8_UINT;
+			break;
+		case DXGI_FORMAT_R8G8_TYPELESS:
+			return FORMAT_R8G8_TYPELESS;
+			break;
+		case DXGI_FORMAT_R8G8_UNORM:
+			return FORMAT_R8G8_UNORM;
+			break;
+		case DXGI_FORMAT_R8G8_UINT:
+			return FORMAT_R8G8_UINT;
+			break;
+		case DXGI_FORMAT_R8G8_SNORM:
+			return FORMAT_R8G8_SNORM;
+			break;
+		case DXGI_FORMAT_R8G8_SINT:
+			return FORMAT_R8G8_SINT;
+			break;
+		case DXGI_FORMAT_R16_TYPELESS:
+			return FORMAT_R16_TYPELESS;
+			break;
+		case DXGI_FORMAT_R16_FLOAT:
+			return FORMAT_R16_FLOAT;
+			break;
+		case DXGI_FORMAT_D16_UNORM:
+			return FORMAT_D16_UNORM;
+			break;
+		case DXGI_FORMAT_R16_UNORM:
+			return FORMAT_R16_UNORM;
+			break;
+		case DXGI_FORMAT_R16_UINT:
+			return FORMAT_R16_UINT;
+			break;
+		case DXGI_FORMAT_R16_SNORM:
+			return FORMAT_R16_SNORM;
+			break;
+		case DXGI_FORMAT_R16_SINT:
+			return FORMAT_R16_SINT;
+			break;
+		case DXGI_FORMAT_R8_TYPELESS:
+			return FORMAT_R8_TYPELESS;
+			break;
+		case DXGI_FORMAT_R8_UNORM:
+			return FORMAT_R8_UNORM;
+			break;
+		case DXGI_FORMAT_R8_UINT:
+			return FORMAT_R8_UINT;
+			break;
+		case DXGI_FORMAT_R8_SNORM:
+			return FORMAT_R8_SNORM;
+			break;
+		case DXGI_FORMAT_R8_SINT:
+			return FORMAT_R8_SINT;
+			break;
+		case DXGI_FORMAT_A8_UNORM:
+			return FORMAT_A8_UNORM;
+			break;
+		case DXGI_FORMAT_R1_UNORM:
+			return FORMAT_R1_UNORM;
+			break;
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+			return FORMAT_R9G9B9E5_SHAREDEXP;
+			break;
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+			return FORMAT_R8G8_B8G8_UNORM;
+			break;
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+			return FORMAT_G8R8_G8B8_UNORM;
+			break;
+		case DXGI_FORMAT_BC1_TYPELESS:
+			return FORMAT_BC1_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC1_UNORM:
+			return FORMAT_BC1_UNORM;
+			break;
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+			return FORMAT_BC1_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_BC2_TYPELESS:
+			return FORMAT_BC2_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC2_UNORM:
+			return FORMAT_BC2_UNORM;
+			break;
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+			return FORMAT_BC2_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_BC3_TYPELESS:
+			return FORMAT_BC3_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC3_UNORM:
+			return FORMAT_BC3_UNORM;
+			break;
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+			return FORMAT_BC3_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_BC4_TYPELESS:
+			return FORMAT_BC4_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC4_UNORM:
+			return FORMAT_BC4_UNORM;
+			break;
+		case DXGI_FORMAT_BC4_SNORM:
+			return FORMAT_BC4_SNORM;
+			break;
+		case DXGI_FORMAT_BC5_TYPELESS:
+			return FORMAT_BC5_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC5_UNORM:
+			return FORMAT_BC5_UNORM;
+			break;
+		case DXGI_FORMAT_BC5_SNORM:
+			return FORMAT_BC5_SNORM;
+			break;
+		case DXGI_FORMAT_B5G6R5_UNORM:
+			return FORMAT_B5G6R5_UNORM;
+			break;
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+			return FORMAT_B5G5R5A1_UNORM;
+			break;
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+			return FORMAT_B8G8R8A8_UNORM;
+			break;
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+			return FORMAT_B8G8R8X8_UNORM;
+			break;
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+			return FORMAT_R10G10B10_XR_BIAS_A2_UNORM;
+			break;
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+			return FORMAT_B8G8R8A8_TYPELESS;
+			break;
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+			return FORMAT_B8G8R8A8_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+			return FORMAT_B8G8R8X8_TYPELESS;
+			break;
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+			return FORMAT_B8G8R8X8_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_BC6H_TYPELESS:
+			return FORMAT_BC6H_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC6H_UF16:
+			return FORMAT_BC6H_UF16;
+			break;
+		case DXGI_FORMAT_BC6H_SF16:
+			return FORMAT_BC6H_SF16;
+			break;
+		case DXGI_FORMAT_BC7_TYPELESS:
+			return FORMAT_BC7_TYPELESS;
+			break;
+		case DXGI_FORMAT_BC7_UNORM:
+			return FORMAT_BC7_UNORM;
+			break;
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return FORMAT_BC7_UNORM_SRGB;
+			break;
+		case DXGI_FORMAT_AYUV:
+			return FORMAT_AYUV;
+			break;
+		case DXGI_FORMAT_Y410:
+			return FORMAT_Y410;
+			break;
+		case DXGI_FORMAT_Y416:
+			return FORMAT_Y416;
+			break;
+		case DXGI_FORMAT_NV12:
+			return FORMAT_NV12;
+			break;
+		case DXGI_FORMAT_P010:
+			return FORMAT_P010;
+			break;
+		case DXGI_FORMAT_P016:
+			return FORMAT_P016;
+			break;
+		case DXGI_FORMAT_420_OPAQUE:
+			return FORMAT_420_OPAQUE;
+			break;
+		case DXGI_FORMAT_YUY2:
+			return FORMAT_YUY2;
+			break;
+		case DXGI_FORMAT_Y210:
+			return FORMAT_Y210;
+			break;
+		case DXGI_FORMAT_Y216:
+			return FORMAT_Y216;
+			break;
+		case DXGI_FORMAT_NV11:
+			return FORMAT_NV11;
+			break;
+		case DXGI_FORMAT_AI44:
+			return FORMAT_AI44;
+			break;
+		case DXGI_FORMAT_IA44:
+			return FORMAT_IA44;
+			break;
+		case DXGI_FORMAT_P8:
+			return FORMAT_P8;
+			break;
+		case DXGI_FORMAT_A8P8:
+			return FORMAT_A8P8;
+			break;
+		case DXGI_FORMAT_B4G4R4A4_UNORM:
+			return FORMAT_B4G4R4A4_UNORM;
+			break;
+		case DXGI_FORMAT_FORCE_UINT:
+			return FORMAT_FORCE_UINT;
+			break;
+		default:
+			break;
+		}
+		return FORMAT_UNKNOWN;
+	}
+	inline TextureDesc ConvertTextureDesc_Inv(const D3D12_RESOURCE_DESC& desc)
+	{
+		TextureDesc retVal;
 
+		retVal.Format = ConvertFormat_Inv(desc.Format);
+		retVal.Width = (UINT)desc.Width;
+		retVal.Height = desc.Height;
+		retVal.MipLevels = desc.MipLevels;
+
+		return retVal;
+	}
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	// Allocator heaps:
@@ -1145,8 +1661,6 @@ namespace GraphicsTypes
 	}
 	GraphicsDevice_DX12::FrameResources::DescriptorTableFrameAllocator::~DescriptorTableFrameAllocator()
 	{
-		SAFE_RELEASE(m_heapCPU);
-		SAFE_RELEASE(m_heapGPU);
 		SAFE_DELETE_ARRAY(m_boundDescriptors);
 	}
 	void GraphicsDevice_DX12::FrameResources::DescriptorTableFrameAllocator::Reset(ComPtr<ID3D12Device> device, D3D12_CPU_DESCRIPTOR_HANDLE* nullDescriptorsSamplerCBVSRVUAV)
@@ -1772,6 +2286,38 @@ namespace GraphicsTypes
 		GetCommandList()->SetPipelineState(pso->m_pso.Get());
 	}
 
+	void GraphicsDevice_DX12::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	{
+		assert(slot < GPU_RESOURCE_HEAP_SRV_COUNT);
+
+		if (resource != nullptr && resource->m_resource != nullptr)
+		{
+			if (arrayIndex < 0)
+			{
+				if (resource->m_srv != nullptr)
+				{
+					GetFrameResources().ResourceDescriptorsGPU->Update(stage, GPU_RESOURCE_HEAP_CBV_COUNT + slot,
+						resource->m_srv, m_device, GetCommandList());
+				}
+			}
+			else
+			{
+				// TODO: implement array support
+			}
+		}
+	}
+
+	void GraphicsDevice_DX12::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot)
+	{
+		assert(slot < GPU_SAMPLER_HEAP_COUNT);
+
+		if (sampler != nullptr && sampler->m_resource != nullptr)
+		{
+			GetFrameResources().SamplerDescriptorsGPU->Update(stage, slot,
+				sampler->m_resource, m_device, GetCommandList());
+		}
+	}
+
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 	void GraphicsDevice_DX12::Draw(int vertexCount, UINT startVertexLocation)
@@ -2089,7 +2635,7 @@ namespace GraphicsTypes
 				elements[i].SemanticIndex = psoDesc->IL->m_desc[i].SemanticIndex;
 				elements[i].Format = ConvertFormat(psoDesc->IL->m_desc[i].Format);
 				elements[i].InputSlot = psoDesc->IL->m_desc[i].InputSlot;
-				elements[i].AlignedByteOffset = psoDesc->IL->m_desc[i].InputSlot;
+				elements[i].AlignedByteOffset = psoDesc->IL->m_desc[i].AlignedByteOffset;
 				if (elements[i].AlignedByteOffset == APPEND_ALIGNED_ELEMENT)
 					elements[i].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 				elements[i].InputSlotClass = ConvertInputClassification( psoDesc->IL->m_desc[i].InputSlotClass );
@@ -2133,6 +2679,30 @@ namespace GraphicsTypes
 		desc.pRootSignature = m_computeRootSig.Get();
 
 		ThrowIfFailed(m_device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pso->m_pso)));
+	}
+
+	void GraphicsDevice_DX12::CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState)
+	{
+		D3D12_SAMPLER_DESC desc;
+		desc.Filter = ConvertFilter(pSamplerDesc->Filter);
+		desc.AddressU = ConvertTextureAddressMode(pSamplerDesc->AddressU);
+		desc.AddressV = ConvertTextureAddressMode(pSamplerDesc->AddressV);
+		desc.AddressW = ConvertTextureAddressMode(pSamplerDesc->AddressW);
+		desc.MipLODBias = pSamplerDesc->MipLODBias;
+		desc.MaxAnisotropy = pSamplerDesc->MaxAnisotropy;
+		desc.ComparisonFunc = ConvertComparisonFunc(pSamplerDesc->ComparisonFunc);
+		desc.BorderColor[0] = pSamplerDesc->BorderColor[0];
+		desc.BorderColor[1] = pSamplerDesc->BorderColor[1];
+		desc.BorderColor[2] = pSamplerDesc->BorderColor[2];
+		desc.BorderColor[3] = pSamplerDesc->BorderColor[3];
+		desc.MinLOD = pSamplerDesc->MinLOD;
+		desc.MaxLOD = pSamplerDesc->MaxLOD;
+
+		pSamplerState->m_desc = *pSamplerDesc;
+
+		pSamplerState->m_resource = new D3D12_CPU_DESCRIPTOR_HANDLE;
+		pSamplerState->m_resource->ptr = SamplerAllocator->Allocate();
+		m_device->CreateSampler(&desc, *pSamplerState->m_resource);
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -2215,5 +2785,166 @@ namespace GraphicsTypes
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
 
 		GetCommandList()->ResourceBarrier(1, &barrier);
+	}
+
+	void* GraphicsDevice_DX12::AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer)
+	{
+		assert(buffer->m_desc.Usage == USAGE_DYNAMIC && (buffer->m_desc.CpuAccessFlags & CPU_ACCESS_WRITE) && "Ring buffer must be writeable by the CPU");
+		assert(buffer->m_desc.ByteWidth > dataSize && "Data of the required size cannot fit.");
+
+		if (dataSize == 0)
+			return nullptr;
+
+		dataSize = MathHelper::Min(buffer->m_desc.ByteWidth, dataSize);
+
+		UINT position = (UINT)buffer->GetByteOffset();
+		bool wrap = position + dataSize > buffer->m_desc.ByteWidth || buffer->GetResidentFrame() != st_frameCount;
+		position = wrap ? 0 : position;
+
+		size_t alignment = buffer->m_desc.BindFlags & BIND_CONSTANT_BUFFER ? D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = buffer->m_resource.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
+		if (buffer->m_desc.BindFlags & BIND_CONSTANT_BUFFER || buffer->m_desc.BindFlags & BIND_VERTEX_BUFFER)
+		{
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		}
+		else if (buffer->m_desc.BindFlags & BIND_INDEX_BUFFER)
+		{
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_INDEX_BUFFER;
+		}
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		GetCommandList()->ResourceBarrier(1, &barrier);
+
+		uint8_t* dest = GetFrameResources().ResourceBuffer->Allocate(dataSize, alignment);
+		GetCommandList()->CopyBufferRegion(
+			buffer->m_resource.Get(), (UINT64)position,
+			GetFrameResources().ResourceBuffer->m_resource.Get(), GetFrameResources().ResourceBuffer->CalculateOffset(dest),
+			dataSize
+		);
+
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		GetCommandList()->ResourceBarrier(1, &barrier);
+
+		// Thread safety is compromised!
+		buffer->m_byteOffset = position + dataSize;
+		buffer->m_residentFrame = st_frameCount;
+
+		offsetIntoBuffer = (UINT)position;
+		return reinterpret_cast<void*>(dest);
+	}
+
+	void GraphicsDevice_DX12::InvalidateBufferAccess(GPUBuffer* buffer)
+	{
+
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	void GraphicsDevice_DX12::CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps)
+	{
+		(*ppTexture) = new Texture2D();
+
+		std::unique_ptr<uint8_t[]> imageData;
+		std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+		bool isCubeMap = false;
+
+		if (!fileName.substr(fileName.length() - 4).compare(std::string(".dds")))
+		{
+			// Load dds
+			ThrowIfFailed( LoadDDSTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources, 0, nullptr, &isCubeMap) );
+		}
+		else
+		{
+			subresources.push_back({});
+			ThrowIfFailed( LoadWICTextureFromFile(m_device.Get(), std::wstring(fileName.begin(), fileName.end()).c_str(), &(*ppTexture)->m_resource, imageData, subresources[0]) );
+		}
+
+		{
+			D3D12_RESOURCE_DESC desc = (*ppTexture)->m_resource->GetDesc();
+			(*ppTexture)->m_desc = ConvertTextureDesc_Inv(desc);
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+			srv_desc.Format = desc.Format;
+			srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			if (isCubeMap)
+			{
+				srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+				srv_desc.TextureCube.MipLevels = -1;
+				srv_desc.TextureCube.MostDetailedMip = 0;
+				srv_desc.TextureCube.ResourceMinLODClamp = -1;
+			}
+			else
+			{
+				srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srv_desc.Texture2D.MipLevels = -1;
+				srv_desc.Texture2D.MostDetailedMip = 0;
+				srv_desc.Texture2D.PlaneSlice = 0;
+				srv_desc.Texture2D.ResourceMinLODClamp = -1;
+			}
+			(*ppTexture)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+			(*ppTexture)->m_srv->ptr = ResourceAllocator->Allocate();
+			m_device->CreateShaderResourceView((*ppTexture)->m_resource.Get(), &srv_desc, *(*ppTexture)->m_srv);
+
+			UINT64 RequiredSize = 0;
+			m_device->GetCopyableFootprints(&desc, 0, (UINT)subresources.size(), 0, nullptr, nullptr, nullptr, &RequiredSize);
+			uint8_t* dest = TextureUploader->Allocate(static_cast<size_t>(RequiredSize), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+
+			UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*ppTexture)->m_resource.Get(),
+				TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, (UINT)subresources.size(), subresources.data());
+		}
+	}
+
+	void GraphicsDevice_DX12::CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels)
+	{
+		(*ppTexture) = new Texture2D();
+
+		{
+			D3D12_RESOURCE_DESC desc = (*ppTexture)->m_resource->GetDesc();
+			(*ppTexture)->m_desc = ConvertTextureDesc_Inv(desc);
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+			srv_desc.Format = ConvertFormat(format);
+			srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			{
+				srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srv_desc.Texture2D.MipLevels = -1;
+				srv_desc.Texture2D.MostDetailedMip = 0;
+				srv_desc.Texture2D.PlaneSlice = 0;
+				srv_desc.Texture2D.ResourceMinLODClamp = -1;
+			}
+			(*ppTexture)->m_srv = new D3D12_CPU_DESCRIPTOR_HANDLE;
+			(*ppTexture)->m_srv->ptr = ResourceAllocator->Allocate();
+			m_device->CreateShaderResourceView((*ppTexture)->m_resource.Get(), &srv_desc, *(*ppTexture)->m_srv);
+
+			UINT64 RequiredSize = 0;
+			m_device->GetCopyableFootprints(&desc, 0, (UINT)levels, 0, nullptr, nullptr, nullptr, &RequiredSize);
+			uint8_t* dest = TextureUploader->Allocate(static_cast<size_t>(RequiredSize), D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+
+			//UINT64 dataSize = UpdateSubresources(GetCommandList().Get(), (*ppTexture)->m_resource.Get(),
+			//	TextureUploader->m_resource.Get(), TextureUploader->CalculateOffset(dest), 0, levels, subresources.data());
+		}
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	void GraphicsDevice_DX12::BeginProfilerBlock(const char* name)
+	{
+		::PIXBeginEvent(GetCommandList().Get(), 0, name);
+	}
+
+	void GraphicsDevice_DX12::EndProfilerBlock()
+	{
+		::PIXEndEvent(GetCommandList().Get());
+	}
+
+	void GraphicsDevice_DX12::SetMarker(const char* name)
+	{
+		::PIXSetMarker(GetCommandList().Get(), 0, name);
 	}
 }

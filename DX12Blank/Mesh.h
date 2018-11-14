@@ -1,8 +1,9 @@
 #pragma once
 
 #include "GraphicsDevice.h"
+#include "Frustum.h"
 
-using namespace GraphicsTypes;
+using namespace Graphics;
 
 // Defines a subrange of geometry in a MeshGeometry.  This is for when multiple
 // geometries are stored in one vertex and index buffer.  It provides the offsets
@@ -35,8 +36,13 @@ struct Mesh
 	std::vector<Submesh> m_drawArgs;
 
 public:
-	void Draw(GraphicsTypes::GraphicsDevice& device);
+	Mesh() {};
+	Mesh(Graphics::GraphicsDevice& device, const struct aiMesh* mesh);
 
-	void CreateVertexBuffers(GraphicsTypes::GraphicsDevice& device, void* data, UINT size, UINT stride);
-	void CreateIndexBuffers(GraphicsTypes::GraphicsDevice& device, void* data, UINT size);
+	void Draw(Graphics::GraphicsDevice& device, const float4x4& world, const Frustum& frustum);
+
+	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size, UINT stride);
+	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT size);
+
+	static std::shared_ptr<Mesh> FromFile(Graphics::GraphicsDevice& device, const std::string& filename);
 };

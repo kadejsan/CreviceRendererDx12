@@ -3,7 +3,7 @@
 #include "GraphicsDescriptors.h"
 #include "GraphicsResource.h"
 
-using namespace GraphicsTypes;
+using namespace Graphics;
 
 PSOCache::PSOCache()
 {
@@ -15,7 +15,7 @@ PSOCache::~PSOCache()
 
 }
 
-void PSOCache::Initialize(GraphicsTypes::GraphicsDevice& device)
+void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 {
 	m_cache.resize(PSO_MAX);
 
@@ -26,13 +26,15 @@ void PSOCache::Initialize(GraphicsTypes::GraphicsDevice& device)
 	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.VS);
 	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.PS);
 	{
-		VertexInputLayoutDesc layoutDesc[2] =
+		VertexInputLayoutDesc layoutDesc[4] =
 		{
 			{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, FORMAT_R32G32B32A32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 }
+			{ "NORMAL", 0, FORMAT_R32G32B32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 },
+			{ "TANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 24, INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, FORMAT_R32G32_FLOAT, 0, 36, INPUT_PER_VERTEX_DATA, 0 }
 		};
 		psoDesc.IL = new VertexLayout();
-		device.CreateInputLayout(layoutDesc, 2, psoDesc.IL);
+		device.CreateInputLayout(layoutDesc, 4, psoDesc.IL);
 	}
 	psoDesc.RS = new RasterizerState();
 	psoDesc.BS = new BlendState();
@@ -54,4 +56,29 @@ void PSOCache::Initialize(GraphicsTypes::GraphicsDevice& device)
 	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
 	m_cache[SimpleColorWireframe] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cache[SimpleColorWireframe].get());
+
+	// PBR
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\PBR.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\PBR.hlsl", psoDesc.PS);
+	{
+		VertexInputLayoutDesc layoutDesc[5] =
+		{
+			{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, FORMAT_R32G32B32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 },
+			{ "TANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 24, INPUT_PER_VERTEX_DATA, 0 },
+			{ "BITANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 36, INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, FORMAT_R32G32_FLOAT, 0, 48, INPUT_PER_VERTEX_DATA, 0 }
+		};
+		psoDesc.IL = new VertexLayout();
+		device.CreateInputLayout(layoutDesc, 5, psoDesc.IL);
+	}
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	m_cache[PBRSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cache[PBRSolid].get());
+
+	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
+	m_cache[PBRWireframe] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cache[PBRWireframe].get());
 }

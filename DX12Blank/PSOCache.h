@@ -2,7 +2,7 @@
 
 #include "GraphicsDevice.h"
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class GraphicsPSO;
 }
@@ -11,6 +11,8 @@ enum ePSO
 {
 	SimpleColorSolid,
 	SimpleColorWireframe,
+	PBRSolid,
+	PBRWireframe,
 
 	PSO_MAX,
 };
@@ -21,10 +23,10 @@ public:
 	PSOCache();
 	~PSOCache();
 
-	void Initialize( GraphicsTypes::GraphicsDevice& device );
+	void Initialize( Graphics::GraphicsDevice& device );
 	
-	GraphicsTypes::GraphicsPSO* GetPSO(ePSO pso) const { return m_cache[pso].get(); }
+	Graphics::GraphicsPSO* GetPSO(ePSO pso) const { return m_cache[pso].get(); }
 
 private:
-	std::vector<std::unique_ptr<GraphicsTypes::GraphicsPSO>> m_cache;
+	std::vector<std::unique_ptr<Graphics::GraphicsPSO>> m_cache;
 };

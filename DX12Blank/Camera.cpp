@@ -4,8 +4,8 @@
 void CameraArcBall::Update()
 {
 	// Convert Spherical to Cartesian coordinates.
-	m_eyePos.x = m_radius * sinf(m_phi)*cosf(m_theta);
-	m_eyePos.z = m_radius * sinf(m_phi)*sinf(m_theta);
+	m_eyePos.x = m_radius * sinf(m_phi) * cosf(m_theta);
+	m_eyePos.z = m_radius * sinf(m_phi) * sinf(m_theta);
 	m_eyePos.y = m_radius * cosf(m_phi);
 
 	// Build the view matrix.
@@ -28,4 +28,6 @@ void CameraArcBall::Update()
 	XMStoreFloat4x4(&m_viewProj, viewProj);
 	XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
 	XMStoreFloat4x4(&m_invViewProj, invViewProj);
+
+	m_frustum.ConstructFrustum(m_farZ, m_proj, m_view);
 }

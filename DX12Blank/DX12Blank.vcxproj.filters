@@ -25,6 +25,9 @@
     <Filter Include="Engine\Material">
       <UniqueIdentifier>{11323f9b-a3e9-4eaa-af17-c4efeffa23f9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\GpuApi\DirectX12\TextureUtils">
+      <UniqueIdentifier>{09c4df14-0e08-4064-8d80-83b8cfe88dee}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -84,13 +87,34 @@
     <ClInclude Include="MathHelper.h">
       <Filter>Engine\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="PSOCache.h">
-      <Filter>Engine</Filter>
-    </ClInclude>
     <ClInclude Include="GeometryGenerator.h">
       <Filter>Engine\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="RenderObject.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="PSOCache.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Frustum.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRenderer.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Color.h">
+      <Filter>Engine\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="DDSTextureLoader12.h">
+      <Filter>Engine\Graphics\GpuApi\DirectX12\TextureUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="WICTextureLoader12.h">
+      <Filter>Engine\Graphics\GpuApi\DirectX12\TextureUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="SamplerCache.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
@@ -134,18 +158,46 @@
     <ClCompile Include="MathHelper.cpp">
       <Filter>Engine\Utils</Filter>
     </ClCompile>
-    <ClCompile Include="PSOCache.cpp">
-      <Filter>Engine</Filter>
-    </ClCompile>
     <ClCompile Include="GeometryGenerator.cpp">
       <Filter>Engine\Mesh</Filter>
     </ClCompile>
     <ClCompile Include="RenderObject.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="PSOCache.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Frustum.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TextRenderer.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Color.cpp">
+      <Filter>Engine\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="DDSTextureLoader12.cpp">
+      <Filter>Engine\Graphics\GpuApi\DirectX12\TextureUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="WICTextureLoader12.cpp">
+      <Filter>Engine\Graphics\GpuApi\DirectX12\TextureUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="SamplerCache.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SimpleColor.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="packages.config" />
+    <None Include="Shaders\Font.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\PBR.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

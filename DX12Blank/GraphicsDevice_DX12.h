@@ -5,7 +5,7 @@
 
 using namespace Microsoft::WRL;
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class GraphicsDevice_DX12 : public GraphicsDevice
 	{
@@ -48,6 +48,8 @@ namespace GraphicsTypes
 		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) override;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
+		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
+		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) override;
 		virtual void DrawIndexed(int indexCount, UINT startIndexLocation, UINT baseVertexLocation) override;
@@ -60,11 +62,21 @@ namespace GraphicsTypes
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) override;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) override;
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) override;
+		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) override;
 
 		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) override;
+		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) override;
+		virtual void InvalidateBufferAccess(GPUBuffer* buffer) override;
+
+		virtual void CreateTextureFromFile(const std::string& fileName, Texture2D **ppTexture, bool mipMaps) override;
+		virtual void CreateTextureFromMemory(const std::shared_ptr<class Image>& image, Texture2D **ppTexture, FORMAT format, UINT levels = 0) override;
+
+		virtual void BeginProfilerBlock(const char* name);
+		virtual void EndProfilerBlock();
+		virtual void SetMarker(const char* name);
 
 	private:
 		void GetHardwareAdapter( IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter );

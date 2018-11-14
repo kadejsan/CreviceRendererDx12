@@ -6,6 +6,9 @@
 #include "GeometryGenerator.h"
 #include "Material.h"
 #include "Camera.h"
+#include "TextRenderer.h"
+
+#define PBR_MODEL
 
 CreviceWindow::CreviceWindow( std::string name )
 	: BaseWindow( name )
@@ -18,16 +21,20 @@ void CreviceWindow::OnInit()
 	
 	m_engineTimer.Reset();
 
-	m_graphicsDevice = new GraphicsTypes::GraphicsDevice_DX12();
-	m_graphicsDevice->Initialize( this );
+	Renderer::GGraphicsDevice = new Graphics::GraphicsDevice_DX12();
+	Renderer::GGraphicsDevice->Initialize( this );
 
-	m_psoCache.Initialize(*m_graphicsDevice);
-
+	m_psoCache.Initialize(*Renderer::GGraphicsDevice);
+	m_samplerCache.Initialize(*Renderer::GGraphicsDevice);
+	
 	GetDevice().PresentBegin();
+	InitializeTextures();
+	InitializeMesh();
 	InitializeRenderObjects();
+	TextRenderer::Font::Initialize(GetWidth(), GetHeight());
 	GetDevice().PresentEnd();
 
-	m_graphicsDevice->Flush();
+	Renderer::GGraphicsDevice->Flush();
 }
 
 void CreviceWindow::OnUpdate()
@@ -40,27 +47,55 @@ void CreviceWindow::OnRender()
 	GetDevice().PresentBegin();
 
 	if (m_wireframe)
-		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(ePSO::SimpleColorWireframe));
+		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(
+#ifdef PBR_MODEL
+			ePSO::PBRWireframe
+#else
+			ePSO::SimpleColorWireframe
+#endif
+		));
 	else
-		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(ePSO::SimpleColorSolid));
+		GetDevice().BindGraphicsPSO(m_psoCache.GetPSO(
+#ifdef PBR_MODEL
+			ePSO::PBRSolid
+#else
+			ePSO::SimpleColorSolid
+#endif
+		));
 
 	GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objCB, 0);
+	GetDevice().BindSampler(SHADERSTAGE::PS, m_samplerCache.GetSamplerState(eSamplerState::LinearClamp), 0);
 
-	for (auto o : m_renderObjects)
 	{
-		// Update buffer
-		UpdateConstantBuffer(o);
-		o.m_mesh->Draw(GetDevice());
+		ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
+
+#ifdef PBR_MODEL
+		Renderer::GGraphicsDevice->BindResource(PS, m_textures[ETT_Albedo], 0);
+		UpdateConstantBuffer(m_model);
+		m_model.m_mesh->Draw(GetDevice(), m_model.m_world, GetCamera()->m_frustum);
+#else
+ 		for (auto o : m_renderObjects)
+ 		{
+ 			//Update buffer
+ 			UpdateConstantBuffer(o);
+ 			o.m_mesh->Draw(GetDevice(), o.m_world, GetCamera()->m_frustum);
+ 		}
+#endif
 	}
+
+	ScopedTimer::RenderPerfCounters();
 
 	GetDevice().PresentEnd();
 }
 
 void CreviceWindow::OnDestroy()
 {
-	delete m_graphicsDevice;
-	for (auto& ro : m_renderObjects)
-		delete ro.m_mesh;
+	TextRenderer::Font::CleanUpStatic();
+	delete Renderer::GGraphicsDevice;
+
+	// PBR Model
+	for (int i = 0; i < ETT_Max; ++i)
+		delete m_textures[i];
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -91,11 +126,11 @@ void CreviceWindow::OnMouseMove(WPARAM btnState, int x, int y)
 
 void CreviceWindow::InitializeRenderObjects()
 {
-	static const UINT32 NumObjects = 16;
+	static const UINT32 NumObjects = 64;
 	for (UINT32 i = 0; i < NumObjects; ++i)
 	{
 		RenderObject ro;
-		ro.m_mesh = new Mesh();
+		ro.m_mesh.reset(new Mesh());
 		{
 			UINT32 j = i % 4;
 			GeometryGenerator::MeshData obj;
@@ -120,7 +155,7 @@ void CreviceWindow::InitializeRenderObjects()
 			ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
 			ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize);
 
-			XMMATRIX worldMtx = XMMatrixTranslation(-4.0f + 2.0f * (i / 4), 0, -4.0f + 2.0f* (i % 4));
+			XMMATRIX worldMtx = XMMatrixTranslation(-8.0f + 2.0f * (i / 8), 0, -8.0f + 2.0f* (i % 8));
 			XMStoreFloat4x4(&ro.m_world, worldMtx);
 
 			Submesh submesh;
@@ -137,7 +172,7 @@ void CreviceWindow::InitializeRenderObjects()
 
 	if (m_objCB == nullptr)
 	{
-		m_objCB = new GraphicsTypes::GPUBuffer();
+		m_objCB = new Graphics::GPUBuffer();
 
 		ObjectConstants objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
@@ -154,6 +189,23 @@ void CreviceWindow::InitializeRenderObjects()
 	}
 }
 
+void CreviceWindow::InitializeTextures()
+{
+	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_A.png", &m_textures[ETT_Albedo], false);
+	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_N.png", &m_textures[ETT_Normal], false);
+	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_R.png", &m_textures[ETT_Roughness], false);
+	Renderer::GGraphicsDevice->CreateTextureFromFile("Data/Textures/cerberus_M.png", &m_textures[ETT_Metalness], false);
+}
+
+void CreviceWindow::InitializeMesh()
+{
+	m_model.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
+	m_model.m_world = MathHelper::Identity4x4();
+	m_model.m_world._11 *= 0.1f;
+	m_model.m_world._22 *= 0.1f;
+	m_model.m_world._33 *= 0.1f;
+}
+
 void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 {
 	if (m_objCB != nullptr)
@@ -168,6 +220,7 @@ void CreviceWindow::UpdateConstantBuffer(const RenderObject& renderObject)
 		ObjectConstants objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 		// Update constant buffer with the latest worldViewProj matrix
+		XMStoreFloat4x4(&objCB.Scene, XMMatrixTranspose(view));
 		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
 		GetDevice().UpdateBuffer(m_objCB, &objCB, sizeof(ObjectConstants));
 	}

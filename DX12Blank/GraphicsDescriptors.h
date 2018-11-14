@@ -1,6 +1,6 @@
 #pragma once
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class VertexShader;
 	class PixelShader;
@@ -128,6 +128,55 @@ namespace GraphicsTypes
 	{
 		INPUT_PER_VERTEX_DATA,
 		INPUT_PER_INSTANCE_DATA,
+	};
+
+	enum TEXTURE_ADDRESS_MODE
+	{
+		TEXTURE_ADDRESS_WRAP,
+		TEXTURE_ADDRESS_MIRROR,
+		TEXTURE_ADDRESS_CLAMP,
+		TEXTURE_ADDRESS_BORDER,
+		TEXTURE_ADDRESS_MIRROR_ONCE,
+	};
+
+	enum FILTER
+	{
+		FILTER_MIN_MAG_MIP_POINT,
+		FILTER_MIN_MAG_POINT_MIP_LINEAR,
+		FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT,
+		FILTER_MIN_POINT_MAG_MIP_LINEAR,
+		FILTER_MIN_LINEAR_MAG_MIP_POINT,
+		FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+		FILTER_MIN_MAG_LINEAR_MIP_POINT,
+		FILTER_MIN_MAG_MIP_LINEAR,
+		FILTER_ANISOTROPIC,
+		FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+		FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR,
+		FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT,
+		FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
+		FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT,
+		FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+		FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
+		FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
+		FILTER_COMPARISON_ANISOTROPIC,
+		FILTER_MINIMUM_MIN_MAG_MIP_POINT,
+		FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR,
+		FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT,
+		FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR,
+		FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT,
+		FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+		FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT,
+		FILTER_MINIMUM_MIN_MAG_MIP_LINEAR,
+		FILTER_MINIMUM_ANISOTROPIC,
+		FILTER_MAXIMUM_MIN_MAG_MIP_POINT,
+		FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR,
+		FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT,
+		FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR,
+		FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT,
+		FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
+		FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT,
+		FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR,
+		FILTER_MAXIMUM_ANISOTROPIC,
 	};
 
 	enum FORMAT
@@ -269,6 +318,12 @@ namespace GraphicsTypes
 		BIND_UNORDERED_ACCESS = 0x80L,
 	};
 
+	enum CPU_ACCESS
+	{
+		CPU_ACCESS_WRITE = 0x10000L,
+		CPU_ACCESS_READ = 0x20000L,
+	};
+
 	enum RESOURCE_MISC_FLAG
 	{
 		RESOURCE_MISC_GENERATE_MIPS = 0x1L,
@@ -383,6 +438,47 @@ namespace GraphicsTypes
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+	struct SampleDesc
+	{
+		UINT Count;
+		UINT Quality;
+
+		SampleDesc() 
+			: Count(1)
+			, Quality(0) 
+		{}
+	};
+
+	struct TextureDesc
+	{
+		UINT		Width;
+		UINT		Height;
+		UINT		Depth;
+		UINT		ArraySize;
+		UINT		MipLevels;
+		FORMAT		Format;
+		SampleDesc	SampleDesc;
+		USAGE		Usage;
+		UINT		BindFlags;
+		UINT		CPUAccessFlags;
+		UINT		MiscFlags;
+
+		TextureDesc()
+			: Width(0)
+			, Height(0)
+			, Depth(0)
+			, ArraySize(1)
+			, MipLevels(1)
+			, Format(FORMAT_UNKNOWN)
+			, Usage(USAGE_DEFAULT)
+			, BindFlags(0)
+			, CPUAccessFlags(0)
+			, MiscFlags(0)
+		{}
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
 	struct RenderTargetBlendStateDesc
 	{
 		bool BlendEnable;
@@ -414,6 +510,35 @@ namespace GraphicsTypes
 		BlendStateDesc() :
 			AlphaToCoverageEnable(false),
 			IndependentBlendEnable(false)
+		{}
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	struct SamplerDesc
+	{
+		FILTER Filter;
+		TEXTURE_ADDRESS_MODE AddressU;
+		TEXTURE_ADDRESS_MODE AddressV;
+		TEXTURE_ADDRESS_MODE AddressW;
+		float MipLODBias;
+		UINT MaxAnisotropy;
+		COMPARISON_FUNC ComparisonFunc;
+		float BorderColor[4];
+		float MinLOD;
+		float MaxLOD;
+
+		SamplerDesc() :
+			Filter(FILTER_MIN_MAG_MIP_POINT),
+			AddressU(TEXTURE_ADDRESS_CLAMP),
+			AddressV(TEXTURE_ADDRESS_CLAMP),
+			AddressW(TEXTURE_ADDRESS_CLAMP),
+			MipLODBias(0.0f),
+			MaxAnisotropy(0),
+			ComparisonFunc(COMPARISON_NEVER),
+			BorderColor{ 0.0f,0.0f,0.0f,0.0f },
+			MinLOD(0.0f),
+			MaxLOD(FLT_MAX)
 		{}
 	};
 
@@ -481,19 +606,6 @@ namespace GraphicsTypes
 			StencilEnable(false),
 			StencilReadMask(0xff),
 			StencilWriteMask(0xff)
-		{}
-	};
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-	struct SampleDesc
-	{
-		UINT Count;
-		UINT Quality;
-
-		SampleDesc() 
-			: Count(1)
-			, Quality(0) 
 		{}
 	};
 

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace GraphicsTypes
+namespace Graphics
 {
 	class GraphicsDevice;
 }
