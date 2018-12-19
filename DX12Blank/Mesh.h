@@ -39,6 +39,7 @@ public:
 	Mesh() {};
 	Mesh(Graphics::GraphicsDevice& device, const struct aiMesh* mesh);
 
+	void Draw(Graphics::GraphicsDevice& device, const float4x4& world);
 	void Draw(Graphics::GraphicsDevice& device, const float4x4& world, const Frustum& frustum);
 
 	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride);

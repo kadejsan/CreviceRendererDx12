@@ -16,7 +16,7 @@ void cs_main(uint2 ThreadID : SV_DispatchThreadID)
 	float4 value3 = inputTexture.Load(sampleLocation, int2(1, 1));
 
 	float4 gatherValue;
-	gatherValue.rgb = pow(value0.rgb, gamma) + pow(value1.rgb, gamma) + pow(value2.rgb, gamma) + pow(value3.rgb, gamma);
+	gatherValue.rgb = pow(abs(value0.rgb), gamma) + pow(abs(value1.rgb), gamma) + pow(abs(value2.rgb), gamma) + pow(abs(value3.rgb), gamma);
 	gatherValue.a = value0.a + value1.a + value2.a + value3.a;
 
 	outputTexture[ThreadID] = float4(pow(0.25 * gatherValue.rgb, 1.0 / gamma), 0.25 * gatherValue.a);

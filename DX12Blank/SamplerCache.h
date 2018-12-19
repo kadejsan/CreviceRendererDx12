@@ -25,7 +25,7 @@ public:
 
 	void Initialize(Graphics::GraphicsDevice& device);
 
-	Graphics::Sampler* GetSamplerState(eSamplerState state) const { return m_cache[state].get(); }
+	inline Graphics::Sampler* GetSamplerState(eSamplerState state) const { return m_cache[state].get(); }
 
 private:
 	std::vector<std::unique_ptr<Graphics::Sampler>> m_cache;

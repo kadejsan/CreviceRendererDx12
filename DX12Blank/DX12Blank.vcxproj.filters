@@ -165,6 +165,9 @@
     <ClInclude Include="UIContext.h">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="GraphicsEnums.h">
+      <Filter>Engine\Graphics\GpuApi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">

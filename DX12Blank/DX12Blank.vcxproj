@@ -142,6 +142,7 @@
     <ClInclude Include="DXHelper.h" />
     <ClInclude Include="GraphicsDescriptors.h" />
     <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="GraphicsEnums.h" />
     <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Include_DX12.h" />

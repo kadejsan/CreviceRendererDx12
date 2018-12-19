@@ -5,6 +5,7 @@
 
 class Camera;
 class CameraArcBall;
+class CameraFree;
 
 class BaseWindow
 {
@@ -18,7 +19,7 @@ public:
 	virtual void OnDestroy() = 0;
 
 	virtual void OnKeyDown( UINT8 key );
-	virtual void OnKeyUp( UINT8 key ) {}
+	virtual void OnKeyUp( UINT8 key );
 
 	virtual void OnMouseDown(WPARAM btnState, int x, int y);
 	virtual void OnMouseUp(WPARAM btnState, int x, int y);
@@ -33,7 +34,8 @@ public:
 
 	inline const EngineTimer& GetTimer() const { return m_engineTimer; }
 	inline const Camera* GetCamera() const { return reinterpret_cast<Camera*>(m_camera); }
-	inline const CameraArcBall* GetCameraArcBall() const { return m_camera; }
+	inline CameraArcBall* GetCameraArcBall() { return reinterpret_cast<CameraArcBall*>(m_camera); }
+	inline CameraFree* GetCameraFree() { return reinterpret_cast<CameraFree*>(m_camera); }
 
 	void ParseCommandLineArgs( _In_reads_(argc) WCHAR* argv[], int argc );
 
@@ -43,7 +45,7 @@ protected:
 	EngineTimer		m_engineTimer;
 
 protected:
-	CameraArcBall*  m_camera;
+	Camera*			m_camera;
 
 protected:
 	UINT32 m_width;

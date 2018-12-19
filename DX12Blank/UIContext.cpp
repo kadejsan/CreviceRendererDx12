@@ -19,7 +19,7 @@ void UIContext::DrawUI()
 	{
 		ImGui::Checkbox("Wireframe", &Wireframe);
 
-		const char* skyboxes[] = { "Street" };
+		const char* skyboxes[] = { "Street", "Rooftop", "Cape Hill", "Venice Sunset", "Newport Loft" };
 		ImGui::Combo("HDR Skybox", &HDRSkybox, skyboxes, IM_ARRAYSIZE(skyboxes));
 
 		const char* models[] = { "Sphere", "Cerberus" };

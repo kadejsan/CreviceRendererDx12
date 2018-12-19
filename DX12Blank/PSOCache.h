@@ -41,8 +41,8 @@ public:
 
 	void Initialize( Graphics::GraphicsDevice& device );
 	
-	Graphics::GraphicsPSO* GetPSO(eGPSO pso) const { return m_cacheGraphics[pso].get(); }
-	Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_cacheCompute[pso].get(); }
+	inline Graphics::GraphicsPSO* GetPSO(eGPSO pso) const { return m_cacheGraphics[pso].get(); }
+	inline Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_cacheCompute[pso].get(); }
 
 private:
 	void InitializeGraphics( Graphics::GraphicsDevice& device );

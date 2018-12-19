@@ -29,11 +29,16 @@ public:
 	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
 
+	void UpdateHDRSkybox();
+
 	Graphics::GraphicsDevice& GetDevice() { return *Renderer::GetDevice(); }
+	Renderer&				  GetRenderer() { assert(m_renderer != nullptr); return *m_renderer; }
 
 private:
-	PSOCache					m_psoCache;
-	SamplerCache				m_samplerCache;
+	Renderer*					m_renderer;
+
+	int							m_skyboxID;
+	RenderObject				m_skybox;
 
 	// Temporary: objects list rendering
 	// #TODO: Scene graph
@@ -69,20 +74,6 @@ private:
 	};
 	GPUBuffer*		m_shadingCB;
 
-	struct SpecularMapFilterConstants
-	{
-		float Roughness;
-	};
-	GPUBuffer*		m_specularMapFilterCB;
-
-	enum ETextureType
-	{
-		ETT_Albedo,
-		ETT_Normal,
-		ETT_Roughness,
-		ETT_Metalness,
-		ETT_Max
-	};
 	Texture2D*		m_textures[ETT_Max];
 	enum EModelType
 	{
@@ -91,13 +82,5 @@ private:
 		EMT_Max
 	};
 	RenderObject	m_model[EMT_Max];
-	RenderObject	m_skybox;
 
-	Texture2D*		m_envTexture;
-	Texture2D*		m_envTextureUnfiltered;
-	Texture2D*		m_envTextureEquirect;
-	Texture2D*		m_irradianceMap;
-	Texture2D*		m_spBRDFLut;
-
-	RenderTarget	m_frameBuffer;
 };

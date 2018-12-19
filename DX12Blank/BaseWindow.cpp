@@ -11,7 +11,7 @@ BaseWindow::BaseWindow( std::string windowName )
 	, m_width( 1280 )
 	, m_height( 720 )
 {
-	m_camera = new CameraArcBall(AspectRatio());
+	m_camera = new CameraFree(AspectRatio());
 	m_camera->Update();
 }
 
@@ -23,6 +23,7 @@ BaseWindow::~BaseWindow()
 void BaseWindow::OnUpdate()
 {
 	m_engineTimer.Tick();
+	m_camera->Update();
 	if (!m_isPaused)
 	{
 		CalculateFrameStats();
@@ -31,7 +32,50 @@ void BaseWindow::OnUpdate()
 
 void BaseWindow::OnKeyDown(UINT8 key)
 {
+	if (GetCamera()->GetType() == Free)
+	{
+		CameraFree* camera = static_cast<CameraFree*>(m_camera);
+		if (key == 'W')
+		{
+			camera->TranslateZ(0.1f);
+		}
+		else if (key == 'S')
+		{
+			camera->TranslateZ(-0.1f);
+		}
+		if (key == 'A')
+		{
+			camera->TranslateX(-0.1f);
+		}
+		else if (key == 'D')
+		{
+			camera->TranslateX(0.1f);
+		}
+	}
+}
 
+void BaseWindow::OnKeyUp(UINT8 key)
+{
+	if (GetCamera()->GetType() == Free)
+	{
+		CameraFree* camera = static_cast<CameraFree*>(m_camera);
+		if (key == 'W')
+		{
+			camera->TranslateZ(0.0f);
+		}
+		else if (key == 'S')
+		{
+			camera->TranslateZ(0.0f);
+		}
+		if (key == 'A')
+		{
+			camera->TranslateX(0.0f);
+		}
+		else if (key == 'D')
+		{
+			camera->TranslateX(0.0f);
+		}
+	}
 }
 
 void BaseWindow::OnMouseDown(WPARAM btnState, int x, int y)
@@ -49,27 +93,41 @@ void BaseWindow::OnMouseUp(WPARAM btnState, int x, int y)
 
 void BaseWindow::OnMouseMove(WPARAM btnState, int x, int y)
 {
-	if ((btnState & MK_LBUTTON) != 0)
+	if (GetCamera()->GetType() == ArcBall)
 	{
-		// Make each pixel correspond to a quarter of a degree.
-		float dx = XMConvertToRadians(0.25f*static_cast<float>(x - m_lastMousePos.x));
-		float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePos.y));
+		CameraArcBall* camera = GetCameraArcBall();
+		if ((btnState & MK_LBUTTON) != 0)
+		{
+			// Make each pixel correspond to a quarter of a degree.
+			float dx = XMConvertToRadians(0.25f*static_cast<float>(x - m_lastMousePos.x));
+			float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePos.y));
 
-		// Update angles based on input to orbit camera around box.
-		m_camera->SetTheta(dx);
-		m_camera->SetPhi(dy);
+			// Update angles based on input to orbit camera around box.
+			camera->SetTheta(dx);
+			camera->SetPhi(dy);
+		}
+		else if ((btnState & MK_RBUTTON) != 0)
+		{
+			// Make each pixel correspond to 0.005 unit in the scene.
+			float dx = 0.005f*static_cast<float>(x - m_lastMousePos.x);
+			float dy = 0.005f*static_cast<float>(y - m_lastMousePos.y);
+
+			// Update the camera radius based on input.
+			camera->SetRadius(dx - dy);
+		}
 	}
-	else if ((btnState & MK_RBUTTON) != 0)
+	else if (GetCamera()->GetType() == Free)
 	{
-		// Make each pixel correspond to 0.005 unit in the scene.
-		float dx = 0.005f*static_cast<float>(x - m_lastMousePos.x);
-		float dy = 0.005f*static_cast<float>(y - m_lastMousePos.y);
+		CameraFree* camera = GetCameraFree();
+		if ((btnState & MK_RBUTTON) != 0)
+		{
+			// Make each pixel correspond to a quarter of a degree.
+			float dx = XMConvertToRadians(0.25f*static_cast<float>(x - m_lastMousePos.x));
+			float dy = XMConvertToRadians(0.25f*static_cast<float>(y - m_lastMousePos.y));
 
-		// Update the camera radius based on input.
-		m_camera->SetRadius(dx - dy);
+			camera->Rotate(dy, dx);
+		}
 	}
-
-	m_camera->Update();
 
 	m_lastMousePos.x = x;
 	m_lastMousePos.y = y;
@@ -77,10 +135,11 @@ void BaseWindow::OnMouseMove(WPARAM btnState, int x, int y)
 
 void BaseWindow::OnMouseWheel(float delta)
 {
-	// Update the camera radius based on input.
-	m_camera->SetRadius(-0.005f*delta);
-
-	m_camera->Update();
+	if (GetCamera()->GetType() == ArcBall)
+	{
+		// Update the camera radius based on input.
+		GetCameraArcBall()->SetRadius(-0.005f*delta);
+	}
 }
 
 void BaseWindow::ParseCommandLineArgs(_In_reads_(argc) WCHAR* argv[], int argc)
