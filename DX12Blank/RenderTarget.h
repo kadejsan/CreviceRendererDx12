@@ -1,10 +1,9 @@
 #pragma once
 
 #include "GraphicsAPI.h"
+#include "DepthTarget.h"
 
 #include <vector>
-
-class DepthTarget;
 
 using namespace Graphics;
 
@@ -40,6 +39,7 @@ public:
 	void Set(DepthTarget* getDepth, bool disableColor = false, int viewID = -1);
 
 	Texture2D* GetTexture(int viewID = 0) const { return m_renderTargets[viewID]; }
+	Texture2D* GetDepthTexture() const { return m_depth->GetTexture(); }
 	Texture2D* GetTextureResolvedMSAA(int viewID = 0);
 	TextureDesc GetDesc(int viewID = 0) const { assert(viewID < m_numViews); return GetTexture(viewID)->m_desc; }
 	UINT GetMipCount();

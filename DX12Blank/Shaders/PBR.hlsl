@@ -66,6 +66,13 @@ cbuffer cbPerObject : register(b0)
 	uint	 gNumLights;
 };
 
+cbuffer cbPerObject : register(b1)
+{
+	float4x4	gScreenToWorld;
+	float4x4	gCubemapRotation;
+	float4		gScreenDim;
+};
+
 Texture2D<float4>	Albedo		: register(t0);
 Texture2D<float4>	Normal		: register(t1);
 Texture2D<float>	Roughness	: register(t2);
@@ -200,7 +207,7 @@ float4 ps_main(VertexOut pin) : SV_Target
 
 		// Sample pre-filtered specular reflection environment at correct mipmap level.
 		uint specularTextureLevels = querySpecularTextureLevels();
-		float3 specularIrradiance = SpecularMap.SampleLevel(Sampler, Lr, roughness * specularTextureLevels).rgb;
+		float3 specularIrradiance = SpecularMap.SampleLevel(Sampler, mul(Lr, (float3x3)gCubemapRotation), roughness * specularTextureLevels).rgb;
 
 		// Split-sum approximation factors for Cook-Torrance specular BRDF.
 		float2 specularBRDF = SpecularBRDF_LUT.Sample(spBRDFSampler, float2(cosLo, roughness)).rg;

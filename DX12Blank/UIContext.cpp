@@ -1,12 +1,15 @@
 
 #include "stdafx.h"
 #include "UIContext.h"
+#include "MathHelper.h"
 #include "imgui.h"
 
 bool UIContext::Wireframe = false;
 
 int UIContext::HDRSkybox = 0;
 int UIContext::PBRModel = 0;
+
+int UIContext::CubemapRotation = 0.0f;
 
 float UIContext::Color[3] = { 1.0f, 1.0f, 1.0f };
 float UIContext::Roughness = 0.5f;
@@ -21,6 +24,8 @@ void UIContext::DrawUI()
 
 		const char* skyboxes[] = { "Street", "Rooftop", "Cape Hill", "Venice Sunset", "Newport Loft" };
 		ImGui::Combo("HDR Skybox", &HDRSkybox, skyboxes, IM_ARRAYSIZE(skyboxes));
+
+		ImGui::SliderInt("Skybox Rotation", &CubemapRotation, 0, 360);
 
 		const char* models[] = { "Sphere", "Cerberus" };
 		ImGui::Combo("PBR Models", &PBRModel, models, IM_ARRAYSIZE(models));

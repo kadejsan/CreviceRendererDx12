@@ -10,6 +10,8 @@ public:
 	static int HDRSkybox;
 	static int PBRModel;
 
+	static int CubemapRotation;
+
 	static float Color[3];
 	static float Roughness;
 	static float Metalness;

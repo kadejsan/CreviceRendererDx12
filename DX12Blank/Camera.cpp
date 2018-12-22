@@ -19,7 +19,7 @@ void CameraArcBall::Update()
 	XMStoreFloat4x4(&m_invView, invView);
 
 	// The window resized, so update the aspect ratio and recompute the projection matrix.
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*MathHelper::Pi, m_aspectRatio, m_nearZ, m_farZ);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(m_fov, m_aspectRatio, m_nearZ, m_farZ);
 	XMStoreFloat4x4(&m_proj, proj);
 	XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
 	XMStoreFloat4x4(&m_invProj, invProj);
@@ -96,7 +96,7 @@ void CameraFree::Update()
 	XMStoreFloat4x4(&m_invView, invView);
 
 	// The window resized, so update the aspect ratio and recompute the projection matrix.
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(0.25f*MathHelper::Pi, m_aspectRatio, m_nearZ, m_farZ);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(m_fov, m_aspectRatio, m_nearZ, m_farZ);
 	XMStoreFloat4x4(&m_proj, proj);
 	XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
 	XMStoreFloat4x4(&m_invProj, invProj);

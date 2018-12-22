@@ -47,7 +47,8 @@ private:
 	void InitializeTextures();
 	void InitializeMesh();
 	void InitializeConstantBuffers();
-	void UpdateConstantBuffer(const RenderObject& renderObject);
+	void UpdateGlobalConstantBuffer();
+	void UpdateObjectConstantBuffer(const RenderObject& renderObject);
 
 	struct ObjectConstants
 	{
@@ -73,6 +74,14 @@ private:
 		float  Metalness;
 	};
 	GPUBuffer*		m_shadingCB;
+
+	struct BackgroundConstants
+	{
+		float4x4 ScreenToWorld = MathHelper::Identity4x4();
+		float4x4 CubemapRotation = MathHelper::Identity4x4();
+		float4   ScreenDimensions;
+	};
+	GPUBuffer*		m_backgroundCB;
 
 	Texture2D*		m_textures[ETT_Max];
 	enum EModelType

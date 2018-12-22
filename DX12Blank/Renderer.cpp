@@ -123,7 +123,6 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 			GGraphicsDevice->TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_COPY_SOURCE, RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 			// Pre-filter rest of the mip chain.
-
 			GGraphicsDevice->BindComputePSO(m_psoCache.GetPSO(SpecularEnvironmentMap));
 			GGraphicsDevice->BindConstantBuffer(SHADERSTAGE::CS, m_specularMapFilterCB, 0);
 			GGraphicsDevice->BindResource(SHADERSTAGE::CS, m_envTextureUnfiltered, 0);
@@ -182,6 +181,16 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 			GGraphicsDevice->TransitionBarrier(m_spBRDFLut, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
 		}
 	}
+}
+
+void Renderer::RenderBackground()
+{
+	BindEnvTexture(PS, 0);
+	GGraphicsDevice->BindResource(PS, m_frameBuffer.GetDepthTexture(), 1);
+
+	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::Background));
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
+	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 }
 
 void Renderer::BindIBL()

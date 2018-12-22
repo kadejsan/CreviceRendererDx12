@@ -34,7 +34,7 @@ cbuffer cbPerObject : register(b0)
 
 VertexOut vs_main(VertexIn vin)
 {
-	VertexOut vout;
+	VertexOut vout = (VertexOut)0;
 
 	// Transform to homogeneous clip space.
 	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
@@ -65,6 +65,13 @@ cbuffer cbPerObject : register(b0)
 	float3	 gColor;
 	float	 gRoughness;
 	float	 gMetalness;
+};
+
+cbuffer cbPerObject : register(b1)
+{
+	float4x4	gScreenToWorld;
+	float4x4	gCubemapRotation;
+	float4		gScreenDim;
 };
 
 TextureCube			SpecularMap		 : register(t4);
@@ -195,7 +202,7 @@ float4 ps_main(VertexOut pin) : SV_Target
 
 		// Sample pre-filtered specular reflection environment at correct mipmap level.
 		uint specularTextureLevels = querySpecularTextureLevels();
-		float3 specularIrradiance = SpecularMap.SampleLevel(Sampler, Lr, roughness * specularTextureLevels).rgb;
+		float3 specularIrradiance = SpecularMap.SampleLevel(Sampler, mul(Lr, (float3x3)gCubemapRotation), roughness * specularTextureLevels).rgb;
 
 		// Split-sum approximation factors for Cook-Torrance specular BRDF.
 		float2 specularBRDF = SpecularBRDF_LUT.Sample(spBRDFSampler, float2(cosLo, roughness)).rg;

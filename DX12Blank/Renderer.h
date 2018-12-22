@@ -30,6 +30,7 @@ public:
 	void BindIBL();
 	void BindEnvTexture(SHADERSTAGE stage, int slot);
 
+	void RenderBackground();
 	void DoPostProcess();
 
 private:

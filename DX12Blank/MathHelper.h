@@ -59,6 +59,16 @@ public:
 		return I;
 	}
 
+	static float Deg2Rad(float deg)
+	{
+		return deg * Pi / 180.0f;
+	}
+
+	static float Rad2Deg(float rad)
+	{
+		return rad * 180.0f / Pi;
+	}
+
 	static const float Infinity;
 	static const float Pi;
 };

@@ -135,6 +135,19 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.DSFormat = FORMAT_UNKNOWN;
 	m_cacheGraphics[TonemappingReinhard] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[TonemappingReinhard].get());
+
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\Background.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\Background.hlsl", psoDesc.PS);
+	psoDesc.DSS->m_desc.DepthEnable = false;
+	psoDesc.DSS->m_desc.DepthWriteMask = DEPTH_WRITE_MASK_ZERO;
+	//psoDesc.DSS->m_desc.DepthFunc = COMPARISON_ALWAYS;
+	psoDesc.NumRTs = 1;
+	psoDesc.RTFormats[0] = Renderer::RTFormat_HDR;
+	//psoDesc.DSFormat = Renderer::DSFormat_Full;
+	m_cacheGraphics[Background] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[Background].get());
 }
 
 void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)

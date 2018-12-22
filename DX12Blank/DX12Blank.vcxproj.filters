@@ -311,5 +311,8 @@
     <None Include="Shaders\PBRSimple.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
+    <None Include="Shaders\Background.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
