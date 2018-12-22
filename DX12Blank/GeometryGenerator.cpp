@@ -410,7 +410,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 		float z = halfDepth - i * dz;
 		for (UINT32 j = 0; j < n; ++j)
 		{
-			float x = -halfWidth * j * dx;
+			float x = -halfWidth + j * dx;
 
 			meshData.Vertices[i*n + j].Position = float3(x, 0.0f, z);
 			meshData.Vertices[i*n + j].Normal = float3(0.0f, 1.0f, 0.0f);

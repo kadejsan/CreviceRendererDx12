@@ -1,4 +1,4 @@
-// Tone-mapping & gamma correction.
+// Background rendering
 
 struct PixelShaderInput
 {
@@ -6,9 +6,7 @@ struct PixelShaderInput
 	float2 texcoord : TEXCOORD;
 };
 
-TextureCube EnvironmentMap : register(t0);
-Texture2D<float> Depth	   : register(t1);
-SamplerState Sampler	   : register(s0);
+#ifdef VERTEX_SHADER
 
 PixelShaderInput vs_main(uint vertexID : SV_VertexID)
 {
@@ -28,6 +26,14 @@ PixelShaderInput vs_main(uint vertexID : SV_VertexID)
 	}
 	return vout;
 }
+
+#endif
+
+#ifdef PIXEL_SHADER
+
+TextureCube EnvironmentMap : register(t0);
+Texture2D<float> Depth	   : register(t1);
+SamplerState Sampler	   : register(s0);
 
 cbuffer cbPerObject : register(b0)
 {
@@ -65,3 +71,5 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	float3 resultColor = EnvironmentMap.SampleLevel(Sampler, mul(viewDir, (float3x3)gCubemapRotation), 0).xyz;
 	return float4(resultColor, 1);
 }
+
+#endif

@@ -50,13 +50,21 @@ private:
 	void UpdateGlobalConstantBuffer();
 	void UpdateObjectConstantBuffer(const RenderObject& renderObject);
 
-	struct ObjectConstants
+	struct ObjectConstantsVS
 	{
 		float4x4 World		   = MathHelper::Identity4x4();
 		float4x4 Scene		   = MathHelper::Identity4x4();
 		float4x4 WorldViewProj = MathHelper::Identity4x4();
 	};
-	GPUBuffer*		m_objCB;
+	GPUBuffer*		m_objVsCB;
+
+	struct ObjectConstantsPS
+	{
+		float3 Color;
+		float  Roughness;
+		float  Metalness;
+	};
+	GPUBuffer*		m_objPsCB;
 
 	static const int MaxLights = 3;
 	struct Light
@@ -69,9 +77,6 @@ private:
 		float4 EyePosition = float4(0, 0, 0, 0);
 		Light  Lights[MaxLights];
 		UINT   LightsCount;
-		float3 Color;
-		float  Roughness;
-		float  Metalness;
 	};
 	GPUBuffer*		m_shadingCB;
 
@@ -91,5 +96,6 @@ private:
 		EMT_Max
 	};
 	RenderObject	m_model[EMT_Max];
+	RenderObject	m_grid;
 
 };

@@ -19,6 +19,7 @@ enum eGPSO
 	SkyboxSolid,
 	SkyboxWireframe,
 	TonemappingReinhard,
+	LightingPass,
 	Background,
 
 	GPSO_MAX,

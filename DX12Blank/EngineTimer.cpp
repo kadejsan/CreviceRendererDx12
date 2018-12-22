@@ -104,7 +104,7 @@ std::unordered_map<std::string, UINT> ScopedTimer::st_PerfCounters;
 
 void ScopedTimer::RenderPerfCounters()
 {
-	UINT y = 4;
+	UINT y = 24;
 	for(auto c : st_Perf)
 	{
 		std::stringstream ss("");

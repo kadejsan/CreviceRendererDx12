@@ -4,6 +4,9 @@ class UIContext
 {
 public:
 	static void DrawUI();
+	
+	static void ShowSceneSettings();
+	static void ShowCameraSettings();
 
 	static bool Wireframe;
 
@@ -15,4 +18,8 @@ public:
 	static float Color[3];
 	static float Roughness;
 	static float Metalness;
+
+	static int FOV;
+	static float Near;
+	static float Far;
 };

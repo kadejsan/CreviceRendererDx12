@@ -5,43 +5,30 @@ static const float Epsilon = 0.00001;
 // Constant normal incidence Fresnel factor for all dielectrics.
 static const float3 Fdielectric = 0.04;
 
-struct VertexIn
+struct PixelShaderInput
 {
-	float3 PosL		: POSITION;
-	float3 Normal	: NORMAL;
-	float3 Tangent	: TANGENT;
-	float3 Bitangent: BITANGENT;
-	float2 Tex		: TEXCOORD;
-};
-
-struct VertexOut
-{
-	float4 PosH				: SV_POSITION;
-	float3 Pos				: POSITION;
-	float3 Normal			: NORMAL;
-	float2 TexCoord			: TEXCOORD;
-	float3x3 TangentBasis	: TBASIS;
+	float4 position : SV_POSITION;
+	float2 texcoord : TEXCOORD;
 };
 
 #ifdef VERTEX_SHADER
 
-cbuffer cbPerObject : register(b0)
+PixelShaderInput vs_main(uint vertexID : SV_VertexID)
 {
-	float4x4 gWorld;
-	float4x4 gView;
-	float4x4 gWorldViewProj;
-};
+	PixelShaderInput vout;
 
-VertexOut vs_main(VertexIn vin)
-{
-	VertexOut vout = (VertexOut)0;
-
-	// Transform to homogeneous clip space.
-	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
-	vout.Pos = mul(float4(vin.PosL, 1.0f), gWorld).xyz;
-	vout.TexCoord = float2(vin.Tex.x, 1.0f - vin.Tex.y);
-	vout.Normal = vin.Normal;
-
+	if (vertexID == 0) {
+		vout.texcoord = float2(1.0, -1.0);
+		vout.position = float4(1.0, 3.0, 0.0, 1.0);
+	}
+	else if (vertexID == 1) {
+		vout.texcoord = float2(-1.0, 1.0);
+		vout.position = float4(-3.0, -1.0, 0.0, 1.0);
+	}
+	else /* if(vertexID == 2) */ {
+		vout.texcoord = float2(1.0, 1.0);
+		vout.position = float4(1.0, -1.0, 0.0, 1.0);
+	}
 	return vout;
 }
 
@@ -62,9 +49,6 @@ cbuffer cbPerObject : register(b0)
 	float4	 gEyePosition;
 	Light	 gLights[MaxLights];
 	uint	 gNumLights;
-	float3	 gColor;
-	float	 gRoughness;
-	float	 gMetalness;
 };
 
 cbuffer cbPerObject : register(b1)
@@ -73,6 +57,11 @@ cbuffer cbPerObject : register(b1)
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
 };
+
+Texture2D<float4>	GBuffer0		: register(t0);
+Texture2D<float4>	GBuffer1		: register(t1);
+Texture2D<float2>	GBuffer2		: register(t2);
+Texture2D<float>	Depth			: register(t3);
 
 TextureCube			SpecularMap		 : register(t4);
 TextureCube			IrradianceMap    : register(t5);
@@ -125,17 +114,41 @@ float4 GammaToLinear(float4 c)
 	return float4(pow(c.rgb, 2.2f), c.a);
 }
 
-float4 ps_main(VertexOut pin) : SV_Target
+float3 PositionFromDepth(in float depth, in float2 pixelCoord, float aspectRatio, float4x4 customScreenToWorld)
 {
-	float4 albedo = float4(gColor, 1);
-	float roughness = gRoughness;
-	float metalness = gMetalness;
+	float2 cpos = (pixelCoord + 0.5f) * aspectRatio;
+	cpos *= 2.0f;
+	cpos -= 1.0f;
+	cpos.y *= -1.0f;
+	float4 positionWS = mul(float4(cpos, depth, 1.0f), customScreenToWorld);
+	return positionWS.xyz / positionWS.w;
+}
+
+float IsSky(float depth)
+{
+	return depth < 1.0f;
+}
+
+float4 ps_main(PixelShaderInput pin) : SV_Target
+{
+	float2 pixelCoord = pin.texcoord.xy;
+
+	// is sky
+	float depth = Depth.SampleLevel(Sampler, pixelCoord, 0).x;
+	if (!IsSky(depth)) discard;
+
+	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));
+	float2 rm = GBuffer2.Sample(Sampler, pixelCoord).rg;
+	float roughness = rm.x;
+	float metalness = rm.y;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
-	float3 Lo = normalize(gEyePosition.xyz - pin.Pos);
+	float posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
+	float3 Lo = normalize(gEyePosition.xyz - posWS);
 
 	// Get current pixel's normal and transform to world space.
-	float3 N = pin.Normal;
+
+	float3 N = normalize(2.0 * GBuffer1.Sample(Sampler, pixelCoord).rgb - 1.0);
 
 	// Angle between surface normal and outgoing light direction.
 	float cosLo = max(0.0, dot(N, Lo));

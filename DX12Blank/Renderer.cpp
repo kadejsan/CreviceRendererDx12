@@ -32,7 +32,12 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 
 	GGraphicsDevice->PresentBegin();
 	{
+		m_gbuffer.Initialize(window->GetWidth(), window->GetHeight(), true, RTFormat_GBuffer0);
+		m_gbuffer.Add(RTFormat_GBuffer1);
+		m_gbuffer.Add(RTFormat_GBuffer2);
+
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
+
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
 		InitializeIBLTextures("environment");
@@ -183,16 +188,6 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 	}
 }
 
-void Renderer::RenderBackground()
-{
-	BindEnvTexture(PS, 0);
-	GGraphicsDevice->BindResource(PS, m_frameBuffer.GetDepthTexture(), 1);
-
-	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::Background));
-	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
-	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
-}
-
 void Renderer::BindIBL()
 {
 	GPUResource* textures[] = {
@@ -204,9 +199,40 @@ void Renderer::BindIBL()
 	GGraphicsDevice->BindResources(PS, textures, 4, 3);
 }
 
+void Renderer::BindGBuffer()
+{
+	GPUResource* textures[] = {
+
+		m_gbuffer.GetTexture(0),
+		m_gbuffer.GetTexture(1),
+		m_gbuffer.GetTexture(2),
+		m_gbuffer.GetDepthTexture()
+	};
+	GGraphicsDevice->BindResources(PS, textures, 0, 4);
+}
+
 void Renderer::BindEnvTexture(SHADERSTAGE stage, int slot)
 {
 	GGraphicsDevice->BindResource(stage, m_envTexture, slot);
+}
+
+void Renderer::RenderLighting()
+{
+	BindGBuffer();
+
+	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LightingPass));
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
+	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
+}
+
+void Renderer::RenderBackground()
+{
+	BindEnvTexture(PS, 0);
+	GGraphicsDevice->BindResource(PS, m_gbuffer.GetDepthTexture(), 1);
+
+	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::Background));
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
+	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 }
 
 void Renderer::DoPostProcess()

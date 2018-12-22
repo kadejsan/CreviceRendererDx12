@@ -16,7 +16,20 @@ const unsigned int ImportFlags =
 	aiProcess_Debone |
 	aiProcess_ValidateDataStructure;
 
-void Mesh::Draw(Graphics::GraphicsDevice& device, const float4x4& world)
+DirectX::BoundingBox Mesh::GetBoundingBox(const float4x4& world) const
+{
+	BoundingBox bbox;
+	for (auto& submesh : m_drawArgs)
+	{
+		BoundingBox box;
+		submesh.Bounds.Transform(box, XMLoadFloat4x4(&world));
+		bbox.CreateMerged(bbox, bbox, box);		
+	}
+
+	return bbox;
+}
+
+void Mesh::Draw(Graphics::GraphicsDevice& device)
 {
 	GPUBuffer* vertexBufs[] = { &m_vertexBufferGPU };
 	const UINT strides[] = { m_vertexBufferGPU.m_desc.StructureByteStride };
@@ -25,27 +38,7 @@ void Mesh::Draw(Graphics::GraphicsDevice& device, const float4x4& world)
 
 	for (auto& submesh : m_drawArgs)
 	{
-		BoundingBox bbox;
-		submesh.Bounds.Transform(bbox, XMLoadFloat4x4(&world));
 		device.DrawIndexed(submesh.IndexCount, submesh.StartIndexLocation, submesh.BaseVertexLocation);
-	}
-}
-
-void Mesh::Draw(Graphics::GraphicsDevice& device, const float4x4& world, const Frustum& frustum)
-{
-	GPUBuffer* vertexBufs[] = { &m_vertexBufferGPU };
-	const UINT strides[] = { m_vertexBufferGPU.m_desc.StructureByteStride };
-	device.BindVertexBuffers(vertexBufs, 0, 1, strides);
-	device.BindIndexBuffer(&m_indexBufferGPU, m_indexBufferGPU.m_desc.Format, 0);
-
-	for( auto& submesh : m_drawArgs )
-	{
-		BoundingBox bbox;
-		submesh.Bounds.Transform(bbox, XMLoadFloat4x4(&world));
-		if( frustum.CheckBox(bbox) )
-		{
-			device.DrawIndexed(submesh.IndexCount, submesh.StartIndexLocation, submesh.BaseVertexLocation);
-		}
 	}
 }
 

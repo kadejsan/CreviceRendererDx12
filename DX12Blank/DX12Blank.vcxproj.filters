@@ -278,9 +278,6 @@
     <None Include="Shaders\Font.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
-    <None Include="Shaders\PBR.hlsl">
-      <Filter>Engine\Graphics\Shaders</Filter>
-    </None>
     <None Include="Shaders\Skybox.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
@@ -308,10 +305,16 @@
     <None Include="Shaders\Tonemapping.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
-    <None Include="Shaders\PBRSimple.hlsl">
+    <None Include="Shaders\Background.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
-    <None Include="Shaders\Background.hlsl">
+    <None Include="Shaders\PBRMaterial.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\PBRMaterialSimple.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\LightingPass.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

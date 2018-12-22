@@ -58,13 +58,12 @@ void CreviceWindow::OnRender()
 		{
 			ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
-			GetRenderer().SetFrameBuffer(true);
+			GetRenderer().SetGBuffer(true);
 			GetRenderer().BindIBL();
 
 			// render objects
-			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objCB, 0);
-			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_shadingCB, 0);
-			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 1);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_objPsCB, 0);
 
 #if PBR_MODEL
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
@@ -85,13 +84,36 @@ void CreviceWindow::OnRender()
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
+			const Frustum& frustum = GetCamera()->m_frustum;
+			if (frustum.CheckBox(m_grid.m_mesh->GetBoundingBox(m_grid.m_world)))
+			{
+				UpdateObjectConstantBuffer(m_grid);
+				m_grid.m_mesh->Draw(GetDevice());
+			}
+
 			for (auto o : m_renderObjects)
 			{
 				//Update buffer
-				UpdateObjectConstantBuffer(o);
-				o.m_mesh->Draw(GetDevice(), o.m_world, GetCamera()->m_frustum);
+				if (frustum.CheckBox(o.m_mesh->GetBoundingBox(o.m_world)))
+				{
+					UpdateObjectConstantBuffer(o);
+					o.m_mesh->Draw(GetDevice());
+				}
 			}
 #endif
+
+			GetRenderer().SetGBuffer(false);
+		}
+
+		GetRenderer().SetFrameBuffer(true);
+
+		{
+			ScopedTimer perf("Lighting Pass", Renderer::GGraphicsDevice);
+
+			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_shadingCB, 0);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 1);
+
+			GetRenderer().RenderLighting();
 		}
 
 		{
@@ -113,9 +135,10 @@ void CreviceWindow::OnRender()
 		}
 	}
 
-	ScopedTimer::RenderPerfCounters();
-	GetDevice().FlushUI();
-
+	{
+		ScopedTimer::RenderPerfCounters();
+		GetDevice().FlushUI();
+	}
 	GetDevice().PresentEnd();
 }
 
@@ -124,6 +147,12 @@ void CreviceWindow::OnDestroy()
 	// PBR Model
 	for (int i = 0; i < ETT_Max; ++i)
 		delete m_textures[i];
+
+	// CB
+	delete m_objVsCB;
+	delete m_objPsCB;
+	delete m_shadingCB;
+	delete m_backgroundCB;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -183,6 +212,29 @@ void CreviceWindow::UpdateHDRSkybox()
 
 void CreviceWindow::InitializeRenderObjects()
 {
+	{
+		GeometryGenerator::MeshData grid = GeometryGenerator::CreateGrid(20.0f, 20.0f, 10, 10);
+		m_grid.m_mesh.reset(new Mesh());
+
+		const UINT vbByteSize = (UINT)grid.Vertices.size() * sizeof(GeometryGenerator::Vertex);
+		const UINT ibByteSize = (UINT)grid.Indices32.size() * sizeof(UINT16);
+
+		m_grid.m_mesh->CreateVertexBuffers(GetDevice(), grid.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
+		m_grid.m_mesh->CreateIndexBuffers(GetDevice(), grid.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
+
+		XMMATRIX worldMtx = XMMatrixTranslation(-1.0f, -1.0f, -1.0f);
+		XMStoreFloat4x4(&m_grid.m_world, worldMtx);
+
+		Submesh submesh;
+		submesh.IndexCount = (UINT)grid.Indices32.size();
+		submesh.StartIndexLocation = 0;
+		submesh.BaseVertexLocation = 0;
+		submesh.Bounds = grid.BBox;
+
+		m_grid.m_mesh->m_drawArgs.reserve(1);
+		m_grid.m_mesh->m_drawArgs.push_back(submesh);
+	}
+
 	static const UINT32 NumObjects = 64;
 	for (UINT32 i = 0; i < NumObjects; ++i)
 	{
@@ -256,22 +308,40 @@ void CreviceWindow::InitializeMesh()
 
 void CreviceWindow::InitializeConstantBuffers()
 {
-	if (m_objCB == nullptr)
+	if (m_objVsCB == nullptr)
 	{
-		m_objCB = new Graphics::GPUBuffer();
+		m_objVsCB = new Graphics::GPUBuffer();
 
-		ObjectConstants objCB;
+		ObjectConstantsVS objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 
 		GPUBufferDesc bd;
 		bd.BindFlags = BIND_CONSTANT_BUFFER;
 		bd.Usage = USAGE_DEFAULT;
 		bd.CpuAccessFlags = 0;
-		bd.ByteWidth = sizeof(ObjectConstants);
+		bd.ByteWidth = sizeof(ObjectConstantsVS);
 		SubresourceData initData;
 		initData.SysMem = &objCB;
-		GetDevice().CreateBuffer(bd, &initData, m_objCB);
-		GetDevice().TransitionBarrier(m_objCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		GetDevice().CreateBuffer(bd, &initData, m_objVsCB);
+		GetDevice().TransitionBarrier(m_objVsCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	}
+
+	if (m_objPsCB == nullptr)
+	{
+		m_objPsCB = new Graphics::GPUBuffer();
+
+		ObjectConstantsPS objCB;
+		ZeroMemory(&objCB, sizeof(objCB));
+
+		GPUBufferDesc bd;
+		bd.BindFlags = BIND_CONSTANT_BUFFER;
+		bd.Usage = USAGE_DEFAULT;
+		bd.CpuAccessFlags = 0;
+		bd.ByteWidth = sizeof(ObjectConstantsPS);
+		SubresourceData initData;
+		initData.SysMem = &objCB;
+		GetDevice().CreateBuffer(bd, &initData, m_objPsCB);
+		GetDevice().TransitionBarrier(m_objPsCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
 	if (m_shadingCB == nullptr)
@@ -338,10 +408,6 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 		}
 		shadingCB.LightsCount = lightsCount;
 
-		shadingCB.Color = float3(UIContext::Color);
-		shadingCB.Roughness = UIContext::Roughness;
-		shadingCB.Metalness = UIContext::Metalness;
-
 		GetDevice().UpdateBuffer(m_shadingCB, &shadingCB, sizeof(ShadingConstants));
 	}
 
@@ -369,7 +435,7 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 
 void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject)
 {
-	if (m_objCB != nullptr)
+	if (m_objVsCB != nullptr)
 	{
 		const Camera* cam = GetCamera();
 
@@ -379,13 +445,25 @@ void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject)
 		XMMATRIX worldViewProj = world * view * proj;
 		XMVECTOR eyePos = XMLoadFloat3(&cam->m_eyePos);
 
-		ObjectConstants objCB;
+		ObjectConstantsVS objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 		// Update constant buffer with the latest worldViewProj matrix
 		XMStoreFloat4x4(&objCB.World, XMMatrixTranspose(world));
 		XMStoreFloat4x4(&objCB.Scene, XMMatrixTranspose(view));
 		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
-		GetDevice().UpdateBuffer(m_objCB, &objCB, sizeof(ObjectConstants));
+		GetDevice().UpdateBuffer(m_objVsCB, &objCB, sizeof(ObjectConstantsVS));
+	}
+
+	if (m_objPsCB != nullptr)
+	{
+		ObjectConstantsPS objCB;
+		ZeroMemory(&objCB, sizeof(objCB));
+
+		objCB.Color = float3(UIContext::Color);
+		objCB.Roughness = UIContext::Roughness;
+		objCB.Metalness = UIContext::Metalness;
+
+		GetDevice().UpdateBuffer(m_objPsCB, &objCB, sizeof(ObjectConstantsPS));
 	}
 }
 

@@ -218,7 +218,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\PBR.hlsl">
+    <None Include="Shaders\LightingPass.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -264,12 +264,15 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\PBRSimple.hlsl">
+    <None Include="Shaders\Background.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\Background.hlsl">
+    <None Include="Shaders\PBRMaterial.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\PBRMaterialSimple.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

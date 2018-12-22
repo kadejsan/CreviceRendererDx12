@@ -1,8 +1,13 @@
 #include "stdafx.h"
 #include "Camera.h"
+#include "UIContext.h"
 
 void CameraArcBall::Update()
 {
+	m_fov = MathHelper::Deg2Rad((float)UIContext::FOV);
+	m_nearZ = UIContext::Near;
+	m_farZ = UIContext::Far;
+
 	// Convert Spherical to Cartesian coordinates.
 	m_eyePos.x = m_radius * sinf(m_phi) * cosf(m_theta);
 	m_eyePos.z = m_radius * sinf(m_phi) * sinf(m_theta);
@@ -73,6 +78,10 @@ void CameraFree::Update()
 	m_translX += m_x;
 	m_translY += m_y;
 	m_translZ += m_z;
+
+	m_fov = MathHelper::Deg2Rad((float)UIContext::FOV);
+	m_nearZ = UIContext::Near;
+	m_farZ = UIContext::Far;
 
 	// Convert Spherical to Cartesian coordinates.
 	XMMATRIX camRotationMatrix = XMMatrixRotationRollPitchYaw(m_angleX, m_angleY, 0);

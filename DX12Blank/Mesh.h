@@ -39,11 +39,12 @@ public:
 	Mesh() {};
 	Mesh(Graphics::GraphicsDevice& device, const struct aiMesh* mesh);
 
-	void Draw(Graphics::GraphicsDevice& device, const float4x4& world);
-	void Draw(Graphics::GraphicsDevice& device, const float4x4& world, const Frustum& frustum);
+	void Draw(Graphics::GraphicsDevice& device);
 
 	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride);
 	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, FORMAT format);
+
+	BoundingBox GetBoundingBox(const float4x4& world) const;
 
 	static std::shared_ptr<Mesh> FromFile(Graphics::GraphicsDevice& device, const std::string& filename);
 };

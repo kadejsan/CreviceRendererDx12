@@ -23,19 +23,23 @@ public:
 
 	inline Graphics::Sampler* GetSamplerState(eSamplerState state) const { return m_samplerCache.GetSamplerState(state); }
 
+	inline void SetGBuffer(bool set = true) { set ? m_gbuffer.Activate() : m_gbuffer.Deactivate(); }
 	inline void SetFrameBuffer(bool set = true) { set ? m_frameBuffer.Activate() : m_frameBuffer.Deactivate(); }
 
 	void InitializeIBLTextures(const std::string& name);
 
 	void BindIBL();
+	void BindGBuffer();
 	void BindEnvTexture(SHADERSTAGE stage, int slot);
 
+	void RenderLighting();
 	void RenderBackground();
 	void DoPostProcess();
 
 private:
 	void InitializeConstantBuffers();
 
+	RenderTarget				  m_gbuffer;
 	RenderTarget				  m_frameBuffer;
 
 	Texture2D*					  m_envTexture;
@@ -59,4 +63,9 @@ public:
 	static const Graphics::FORMAT DSFormat_FullAlias = Graphics::FORMAT_R24G8_TYPELESS;
 	static const Graphics::FORMAT DSFormat_Small = Graphics::FORMAT_D16_UNORM;
 	static const Graphics::FORMAT DSFormat_SmallAlias = Graphics::FORMAT_R16_TYPELESS;
+
+	static const Graphics::FORMAT RTFormat_GBuffer0 = Graphics::FORMAT_R11G11B10_FLOAT;
+	static const Graphics::FORMAT RTFormat_GBuffer1 = Graphics::FORMAT_R10G10B10A2_UNORM;
+	static const Graphics::FORMAT RTFormat_GBuffer2 = Graphics::FORMAT_R16G16_UNORM;
+
 };
