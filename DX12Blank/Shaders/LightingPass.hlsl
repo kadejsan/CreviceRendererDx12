@@ -49,6 +49,7 @@ cbuffer cbPerObject : register(b0)
 	float4	 gEyePosition;
 	Light	 gLights[MaxLights];
 	uint	 gNumLights;
+	float2	 gMousePos;
 };
 
 cbuffer cbPerObject : register(b1)
@@ -60,12 +61,14 @@ cbuffer cbPerObject : register(b1)
 
 Texture2D<float4>	GBuffer0		: register(t0);
 Texture2D<float4>	GBuffer1		: register(t1);
-Texture2D<float2>	GBuffer2		: register(t2);
+Texture2D<float4>	GBuffer2		: register(t2);
 Texture2D<float>	Depth			: register(t3);
 
 TextureCube			SpecularMap		 : register(t4);
 TextureCube			IrradianceMap    : register(t5);
 Texture2D			SpecularBRDF_LUT : register(t6);
+
+RWBuffer<int>		HitProxy		 : register(u0);
 
 SamplerState		Sampler		  : register(s0);
 SamplerState		spBRDFSampler : register(s1);
@@ -133,17 +136,23 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 {
 	float2 pixelCoord = pin.texcoord.xy;
 
+	float4 rm = GBuffer2.Sample(Sampler, pixelCoord);
+	// Hit proxy
+	if (all(abs(pixelCoord - (gMousePos.xy / gScreenDim.xy)) < 0.001f))
+	{
+		HitProxy[0] = rm.w;
+	}
+
 	// is sky
 	float depth = Depth.SampleLevel(Sampler, pixelCoord, 0).x;
 	if (!IsSky(depth)) discard;
 
 	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));
-	float2 rm = GBuffer2.Sample(Sampler, pixelCoord).rg;
 	float roughness = rm.x;
 	float metalness = rm.y;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
-	float posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
+	float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
 	float3 Lo = normalize(gEyePosition.xyz - posWS);
 
 	// Get current pixel's normal and transform to world space.

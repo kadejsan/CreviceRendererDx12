@@ -48,7 +48,7 @@ private:
 	void InitializeMesh();
 	void InitializeConstantBuffers();
 	void UpdateGlobalConstantBuffer();
-	void UpdateObjectConstantBuffer(const RenderObject& renderObject);
+	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id);
 
 	struct ObjectConstantsVS
 	{
@@ -63,6 +63,7 @@ private:
 		float3 Color;
 		float  Roughness;
 		float  Metalness;
+		UINT   ObjectID;
 	};
 	GPUBuffer*		m_objPsCB;
 
@@ -77,6 +78,7 @@ private:
 		float4 EyePosition = float4(0, 0, 0, 0);
 		Light  Lights[MaxLights];
 		UINT   LightsCount;
+		float2 MousePos;
 	};
 	GPUBuffer*		m_shadingCB;
 
@@ -98,4 +100,5 @@ private:
 	RenderObject	m_model[EMT_Max];
 	RenderObject	m_grid;
 
+	bool			m_readHitProxy;
 };

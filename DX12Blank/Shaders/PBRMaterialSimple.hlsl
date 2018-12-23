@@ -47,7 +47,7 @@ struct PixelOut
 {
 	float4 GBuffer0			: SV_Target0;
 	float4 GBuffer1			: SV_Target1;
-	float2 GBuffer2			: SV_Target2;
+	float4 GBuffer2			: SV_Target2;
 };
 
 cbuffer cbPerObject : register(b0)
@@ -55,6 +55,7 @@ cbuffer cbPerObject : register(b0)
 	float3	 gColor;
 	float	 gRoughness;
 	float	 gMetalness;
+	uint	 gObjectID;
 };
 
 SamplerState		Sampler		  : register(s0);
@@ -74,7 +75,7 @@ void ps_main(in VertexOut pin, out PixelOut pout)
 
 	pout.GBuffer0 = albedo;
 	pout.GBuffer1 = float4(CompressNormalsToUnsignedGBuffer(normal), 0);
-	pout.GBuffer2 = float2(roughness, metalness);
+	pout.GBuffer2 = float4(roughness, metalness, 0, gObjectID);
 }
 
 #endif

@@ -58,7 +58,7 @@ namespace Graphics
 		virtual void BindComputePSO(ComputePSO* pso) override;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
-		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) override;
+		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) override;
@@ -88,8 +88,12 @@ namespace Graphics
 		
 		virtual void GenerateMipmaps(Texture* texture) override;
 		virtual void CopyTexture(Texture* dst, Texture* src) override;
-		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) override;
+		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) override; 
+		virtual void CopyBuffer(GPUBuffer* dest, GPUBuffer* src) override;
 		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) override;
+
+		virtual void* Map(const GPUBuffer* buffer) override;
+		virtual void Unmap(const GPUBuffer* buffer) override;
 
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();

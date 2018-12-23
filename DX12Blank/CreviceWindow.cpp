@@ -78,16 +78,18 @@ void CreviceWindow::OnRender()
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
 			const RenderObject& model = m_model[UIContext::PBRModel];
-			UpdateObjectConstantBuffer(model);
+			UpdateObjectConstantBuffer(model, 1);
 			model.m_mesh->Draw(GetDevice(), model.m_world, GetCamera()->m_frustum);
 #else
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
+			int i = 1;
 			const Frustum& frustum = GetCamera()->m_frustum;
 			if (frustum.CheckBox(m_grid.m_mesh->GetBoundingBox(m_grid.m_world)))
 			{
-				UpdateObjectConstantBuffer(m_grid);
+				m_grid.m_color = float3(UIContext::Color);
+				UpdateObjectConstantBuffer(m_grid, i++);
 				m_grid.m_mesh->Draw(GetDevice());
 			}
 
@@ -96,7 +98,7 @@ void CreviceWindow::OnRender()
 				//Update buffer
 				if (frustum.CheckBox(o.m_mesh->GetBoundingBox(o.m_world)))
 				{
-					UpdateObjectConstantBuffer(o);
+					UpdateObjectConstantBuffer(o, i++);
 					o.m_mesh->Draw(GetDevice());
 				}
 			}
@@ -114,6 +116,20 @@ void CreviceWindow::OnRender()
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 1);
 
 			GetRenderer().RenderLighting();
+		}
+
+		UINT hitProxyID = GetRenderer().ReadBackHitProxy();
+		if(m_readHitProxy)
+		{
+			for (auto& ro : m_renderObjects)
+				ro.m_color = float3(UIContext::Color);
+
+			if (hitProxyID != -1)
+			{
+				// set selection
+				m_readHitProxy = false;
+				if (hitProxyID > 1) m_renderObjects[hitProxyID - 2].m_color = float3(1, 0, 0);
+			}
 		}
 
 		{
@@ -169,6 +185,11 @@ void CreviceWindow::OnKeyUp(UINT8 key)
 void CreviceWindow::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	BaseWindow::OnMouseDown(btnState, x, y);
+
+	if ((btnState & MK_LBUTTON) != 0)
+	{
+		m_readHitProxy = true;
+	}
 }
 
 void CreviceWindow::OnMouseUp(WPARAM btnState, int x, int y)
@@ -233,6 +254,7 @@ void CreviceWindow::InitializeRenderObjects()
 
 		m_grid.m_mesh->m_drawArgs.reserve(1);
 		m_grid.m_mesh->m_drawArgs.push_back(submesh);
+		m_grid.m_color = float3(1, 1, 1);
 	}
 
 	static const UINT32 NumObjects = 64;
@@ -275,6 +297,7 @@ void CreviceWindow::InitializeRenderObjects()
 
 			ro.m_mesh->m_drawArgs.reserve(1);
 			ro.m_mesh->m_drawArgs.push_back(submesh);
+			ro.m_color = float3(1, 1, 1);
 		}
 		m_renderObjects.push_back(std::move(ro));
 	}
@@ -407,6 +430,7 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 			shadingCB.Lights[i].LightRadiance = lights[i].LightRadiance;
 		}
 		shadingCB.LightsCount = lightsCount;
+		shadingCB.MousePos = float2((float)m_lastMousePos.x, (float)m_lastMousePos.y);
 
 		GetDevice().UpdateBuffer(m_shadingCB, &shadingCB, sizeof(ShadingConstants));
 	}
@@ -433,7 +457,7 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 	}
 }
 
-void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject)
+void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT objectID)
 {
 	if (m_objVsCB != nullptr)
 	{
@@ -459,9 +483,10 @@ void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject)
 		ObjectConstantsPS objCB;
 		ZeroMemory(&objCB, sizeof(objCB));
 
-		objCB.Color = float3(UIContext::Color);
+		objCB.Color = renderObject.m_color;
 		objCB.Roughness = UIContext::Roughness;
 		objCB.Metalness = UIContext::Metalness;
+		objCB.ObjectID = objectID;
 
 		GetDevice().UpdateBuffer(m_objPsCB, &objCB, sizeof(ObjectConstantsPS));
 	}

@@ -2561,7 +2561,7 @@ namespace Graphics
 		}
 	}
 
-	void GraphicsDevice_DX12::BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	void GraphicsDevice_DX12::BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
 	{
 		assert(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
 
@@ -2571,14 +2571,14 @@ namespace Graphics
 			{
 				if (resource->m_uav != nullptr)
 				{
-					GetFrameResources().ResourceDescriptorsGPU->Update(SHADERSTAGE::CS, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
+					GetFrameResources().ResourceDescriptorsGPU->Update(stage, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
 						resource->m_uav, m_device, GetCommandList());
 				}
 			}
 			else
 			{
 				assert(resource->m_additionalUAVs.size() > static_cast<size_t>(arrayIndex) && "Invalid arrayIndex!");
-				GetFrameResources().ResourceDescriptorsGPU->Update(SHADERSTAGE::CS, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
+				GetFrameResources().ResourceDescriptorsGPU->Update(stage, GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + slot,
 					resource->m_additionalUAVs[arrayIndex], m_device, GetCommandList());
 			}
 		}
@@ -2654,7 +2654,7 @@ namespace Graphics
 		}
 		UINT64 alignedSize = Align(desc.ByteWidth, alignment);
 
-		D3D12_HEAP_PROPERTIES heapDesc = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		D3D12_HEAP_PROPERTIES heapDesc = CD3DX12_HEAP_PROPERTIES(desc.Usage == USAGE_STAGING ? D3D12_HEAP_TYPE_READBACK : D3D12_HEAP_TYPE_DEFAULT);
 		D3D12_HEAP_FLAGS heapFlags = D3D12_HEAP_FLAG_NONE;
 
 		D3D12_RESOURCE_FLAGS resFlags = D3D12_RESOURCE_FLAG_NONE;
@@ -2663,7 +2663,7 @@ namespace Graphics
 
 		D3D12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize, resFlags);
 		
-		D3D12_RESOURCE_STATES resState = D3D12_RESOURCE_STATE_COMMON;
+		D3D12_RESOURCE_STATES resState = desc.Usage == USAGE_STAGING ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON;
 
 		// Create the actual default buffer resource.
 		ThrowIfFailed(m_device->CreateCommittedResource(
@@ -3851,7 +3851,7 @@ namespace Graphics
 
 			GetCommandList()->ResourceBarrier(desc.ArraySize, preDispatchBarriers.data());
 			BindResource(SHADERSTAGE::CS, &linearTexture, 0);
-			BindUnorderedAccessResource(&linearTexture, 0);
+			BindUnorderedAccessResource(SHADERSTAGE::CS, &linearTexture, 0);
 			Dispatch(std::max(1u, levelWidth / 8), std::max(1u, levelHeight / 8), desc.ArraySize);
 			GetCommandList()->ResourceBarrier(desc.ArraySize, postDispatchBarriers.data());
 		}
@@ -3908,6 +3908,23 @@ namespace Graphics
 		GetCommandList()->ResourceBarrier(1, &barrier);
 	}
 
+	void GraphicsDevice_DX12::CopyBuffer(GPUBuffer* dest, GPUBuffer* src)
+	{
+		//TransitionResource(Dest, D3D12_RESOURCE_STATE_COPY_DEST);
+		//TransitionResource(Src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+		GetCommandList()->CopyResource( dest->m_resource.Get(), src->m_resource.Get() );
+
+		//D3D12_RESOURCE_BARRIER barrier = {};
+		//barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		//barrier.Transition.pResource = dest->m_resource.Get();
+		//barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		//barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COMMON;
+		//barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		//barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		//GetCommandList()->ResourceBarrier(1, &barrier);
+	}
+
 	void GraphicsDevice_DX12::MSAAResolve(Texture2D* dst, Texture2D* src)
 	{
 		const CD3DX12_RESOURCE_BARRIER preResolveBarriers[] = {
@@ -3929,6 +3946,20 @@ namespace Graphics
 			GetCommandList()->ResolveSubresource(dst->m_resource.Get(), 0, src->m_resource.Get(), 0, ConvertFormat(format));
 			GetCommandList()->ResourceBarrier(2, postResolveBarriers);
 		}
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	void* GraphicsDevice_DX12::Map(const GPUBuffer* buffer)
+	{
+		void* memory;
+		buffer->m_resource->Map(0, &CD3DX12_RANGE(0, buffer->m_desc.ByteWidth), &memory);
+		return memory;
+	}
+
+	void GraphicsDevice_DX12::Unmap(const GPUBuffer* buffer)
+	{
+		buffer->m_resource->Unmap(0, &CD3DX12_RANGE(0, 0));
 	}
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

@@ -46,7 +46,7 @@ namespace Graphics
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
 		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) = 0;
-		virtual void BindUnorderedAccessResource(GPUResource* resource, int slot, int arrayIndex = -1) = 0;
+		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
 		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) = 0;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) = 0;
@@ -77,7 +77,11 @@ namespace Graphics
 		virtual void GenerateMipmaps(Texture* texture) = 0;
 		virtual void CopyTexture(Texture* dst, Texture* src) = 0;
 		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) = 0;
+		virtual void CopyBuffer(GPUBuffer* dest, GPUBuffer* src) = 0;
 		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) = 0;
+
+		virtual void* Map(const GPUBuffer* buffer) = 0;
+		virtual void Unmap(const GPUBuffer* buffer) = 0;
 
 		virtual void BeginProfilerBlock(const char* name) = 0;
 		virtual void EndProfilerBlock() = 0;

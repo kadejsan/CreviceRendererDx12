@@ -54,8 +54,26 @@ namespace Graphics
 		{}
 
 		// The next appending to buffer will start at this offset
-		size_t GetByteOffset() { return m_byteOffset; }
-		UINT64 GetResidentFrame() { return m_residentFrame; }
+		size_t GetByteOffset() const { return m_byteOffset; }
+		UINT64 GetResidentFrame() const { return m_residentFrame; }
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
+	class GPUReadbackBuffer : public GPUBuffer
+	{
+	public:
+		bool	m_isLocked;
+
+	public:
+		GPUReadbackBuffer()
+			: m_isLocked(false)
+		{}
+
+		virtual ~GPUReadbackBuffer()
+		{}
+
+		bool IsLocked() const { return m_isLocked; }
 	};
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -

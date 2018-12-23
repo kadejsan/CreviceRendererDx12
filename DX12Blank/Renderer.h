@@ -26,6 +26,7 @@ public:
 	inline void SetGBuffer(bool set = true) { set ? m_gbuffer.Activate() : m_gbuffer.Deactivate(); }
 	inline void SetFrameBuffer(bool set = true) { set ? m_frameBuffer.Activate() : m_frameBuffer.Deactivate(); }
 
+	void InitializeHitProxyBuffers();
 	void InitializeIBLTextures(const std::string& name);
 
 	void BindIBL();
@@ -36,6 +37,7 @@ public:
 	void RenderBackground();
 	void DoPostProcess();
 
+	UINT ReadBackHitProxy();
 private:
 	void InitializeConstantBuffers();
 
@@ -53,6 +55,9 @@ private:
 		float Roughness;
 	};
 	GPUBuffer*					  m_specularMapFilterCB;
+	
+	GPUBuffer*					  m_hitProxy;
+	GPUReadbackBuffer*			  m_hitProxyReadback;
 
 public:
 	static const Graphics::FORMAT RTFormat_LDR = Graphics::FORMAT_R8G8B8A8_UNORM;
@@ -66,6 +71,6 @@ public:
 
 	static const Graphics::FORMAT RTFormat_GBuffer0 = Graphics::FORMAT_R11G11B10_FLOAT;
 	static const Graphics::FORMAT RTFormat_GBuffer1 = Graphics::FORMAT_R10G10B10A2_UNORM;
-	static const Graphics::FORMAT RTFormat_GBuffer2 = Graphics::FORMAT_R16G16_UNORM;
+	static const Graphics::FORMAT RTFormat_GBuffer2 = Graphics::FORMAT_R16G16B16A16_FLOAT;
 
 };

@@ -41,6 +41,7 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
 		InitializeIBLTextures("environment");
+		InitializeHitProxyBuffers();
 		TextRenderer::Font::Initialize(window->GetWidth(), window->GetHeight());
 	}
 	GGraphicsDevice->PresentEnd();
@@ -59,6 +60,11 @@ Renderer::~Renderer()
 	delete m_envTextureUnfiltered;
 	delete m_irradianceMap;
 	delete m_spBRDFLut;
+
+	delete m_specularMapFilterCB;
+
+	delete m_hitProxy;
+	delete m_hitProxyReadback;
 }
 
 void Renderer::InitializeConstantBuffers()
@@ -80,6 +86,28 @@ void Renderer::InitializeConstantBuffers()
 		GGraphicsDevice->CreateBuffer(bd, &initData, m_specularMapFilterCB);
 		GGraphicsDevice->TransitionBarrier(m_specularMapFilterCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
+}
+
+void Renderer::InitializeHitProxyBuffers()
+{
+	GPUBufferDesc bd;
+	bd.BindFlags = BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
+	bd.Usage = USAGE_DEFAULT;
+	bd.CpuAccessFlags = 0;
+	bd.ByteWidth = sizeof(int);
+	bd.StructureByteStride = 4;
+	bd.Format = FORMAT_R32_UINT;
+
+	m_hitProxy = new Graphics::GPUBuffer();
+	GGraphicsDevice->CreateBuffer(bd, nullptr, m_hitProxy);
+
+	bd.BindFlags = BIND_RESOURCE_NONE;
+	bd.Usage = USAGE_STAGING;
+	bd.CpuAccessFlags = CPU_ACCESS_READ;
+	bd.Format = FORMAT_UNKNOWN;
+
+	m_hitProxyReadback = new Graphics::GPUReadbackBuffer();
+	GGraphicsDevice->CreateBuffer(bd, nullptr, m_hitProxyReadback);
 }
 
 void Renderer::InitializeIBLTextures(const std::string& name)
@@ -108,7 +136,7 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 			GGraphicsDevice->BindSampler(SHADERSTAGE::CS, m_samplerCache.GetSamplerState(eSamplerState::LinearWrap), 0);
 			GGraphicsDevice->TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
 			GGraphicsDevice->BindResource(SHADERSTAGE::CS, m_envTextureEquirect, 0);
-			GGraphicsDevice->BindUnorderedAccessResource(m_envTextureUnfiltered, 0);
+			GGraphicsDevice->BindUnorderedAccessResource(SHADERSTAGE::CS, m_envTextureUnfiltered, 0);
 			GGraphicsDevice->Dispatch(m_envTexture->m_desc.Width / 32, m_envTexture->m_desc.Height / 32, 6);
 			GGraphicsDevice->TransitionBarrier(m_envTextureUnfiltered, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_COMMON);
 
@@ -142,7 +170,7 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 				spmapCB.Roughness = spmapRoughness;
 
 				GGraphicsDevice->UpdateBuffer(m_specularMapFilterCB, &spmapCB, sizeof(SpecularMapFilterConstants));
-				GGraphicsDevice->BindUnorderedAccessResource(m_envTexture, 0, level);
+				GGraphicsDevice->BindUnorderedAccessResource(SHADERSTAGE::CS, m_envTexture, 0, level);
 
 				GGraphicsDevice->Dispatch(numGroups, numGroups, 6);
 			}
@@ -161,7 +189,7 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 			GGraphicsDevice->TransitionBarrier(m_irradianceMap, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
 
 			GGraphicsDevice->BindResource(SHADERSTAGE::CS, m_envTexture, 0);
-			GGraphicsDevice->BindUnorderedAccessResource(m_irradianceMap, 0);
+			GGraphicsDevice->BindUnorderedAccessResource(SHADERSTAGE::CS, m_irradianceMap, 0);
 
 			GGraphicsDevice->Dispatch(m_irradianceMap->m_desc.Width / 32, m_irradianceMap->m_desc.Height / 32, 6);
 
@@ -179,7 +207,7 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 
 			GGraphicsDevice->TransitionBarrier(m_spBRDFLut, RESOURCE_STATE_COMMON, RESOURCE_STATE_UNORDERED_ACCESS);
 
-			GGraphicsDevice->BindUnorderedAccessResource(m_spBRDFLut, 0);
+			GGraphicsDevice->BindUnorderedAccessResource(SHADERSTAGE::CS, m_spBRDFLut, 0);
 
 			GGraphicsDevice->Dispatch(m_spBRDFLut->m_desc.Width / 32, m_spBRDFLut->m_desc.Height / 32, 1);
 
@@ -220,6 +248,8 @@ void Renderer::RenderLighting()
 {
 	BindGBuffer();
 
+	GGraphicsDevice->BindUnorderedAccessResource(PS, m_hitProxy, 0);
+
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LightingPass));
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
@@ -242,4 +272,27 @@ void Renderer::DoPostProcess()
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::TonemappingReinhard));
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
+}
+
+UINT Renderer::ReadBackHitProxy()
+{
+	if (m_hitProxyReadback->IsLocked())
+	{
+		void* ptr = GGraphicsDevice->Map(m_hitProxyReadback);
+		if (ptr)
+		{
+			GGraphicsDevice->Unmap(m_hitProxyReadback);
+			m_hitProxyReadback->m_isLocked = false;
+			UINT* ptrU = (UINT*)ptr;
+			return *ptrU;
+		}
+	}
+
+	if (!m_hitProxyReadback->IsLocked())
+	{
+		GGraphicsDevice->CopyBuffer(m_hitProxyReadback, m_hitProxy);
+		m_hitProxyReadback->m_isLocked = true;
+	}
+
+	return -1;
 }
