@@ -36,6 +36,7 @@ void DepthTarget::Initialize(int width, int height, UINT MSAAC)
 	depthDesc.BindFlags = BIND_DEPTH_STENCIL | BIND_SHADER_RESOURCE;
 	depthDesc.CPUAccessFlags = 0;
 	depthDesc.MiscFlags = 0;
+	depthDesc.ClearDepth = 0.0f;
 
 	Renderer::GetDevice()->CreateTexture2D(depthDesc, nullptr, &m_texture);
 	Renderer::GetDevice()->TransitionBarrier(m_texture, RESOURCE_STATE_COMMON, RESOURCE_STATE_DEPTH_WRITE);
@@ -79,9 +80,9 @@ void DepthTarget::InitializeCube(int size, bool indepdendentFaces)
 	Renderer::GetDevice()->TransitionBarrier(m_texture, RESOURCE_STATE_COMMON, RESOURCE_STATE_DEPTH_WRITE);
 }
 
-void DepthTarget::Clear()
+void DepthTarget::Clear(float clearDepth /*=1.0f*/, UINT8 clearStencil /*=0*/ )
 {
-	Renderer::GetDevice()->ClearDepthStencil(GetTexture(), CLEAR_DEPTH | CLEAR_STENCIL, 1.0f, 0);
+	Renderer::GetDevice()->ClearDepthStencil(GetTexture(), CLEAR_DEPTH | CLEAR_STENCIL, clearDepth, clearStencil );
 	m_resolvedMSAAUpToDate = false;
 }
 

@@ -29,18 +29,16 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	GraphicsPSODesc psoDesc = {};
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();
-	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.VS);
-	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.PS);
+	device.CreateShader(L"Shaders\\Grid.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\Grid.hlsl", psoDesc.PS);
 	{
-		VertexInputLayoutDesc layoutDesc[4] =
+		VertexInputLayoutDesc layoutDesc[2] =
 		{
 			{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
-			{ "NORMAL", 0, FORMAT_R32G32B32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 },
-			{ "TANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 24, INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, FORMAT_R32G32_FLOAT, 0, 36, INPUT_PER_VERTEX_DATA, 0 }
+			{ "COLOR", 0, FORMAT_R32G32B32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 },
 		};
 		psoDesc.IL = new VertexLayout();
-		device.CreateInputLayout(layoutDesc, 4, psoDesc.IL);
+		device.CreateInputLayout(layoutDesc, 2, psoDesc.IL);
 	}
 	psoDesc.RS = new RasterizerState();
 	psoDesc.BS = new BlendState();
@@ -48,20 +46,18 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.DSS->m_desc.DepthEnable = true;
 	psoDesc.DSS->m_desc.DepthWriteMask = DEPTH_WRITE_MASK_ALL;
 	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_LESS;
-	psoDesc.PT = PRIMITIVETOPOLOGY::TRIANGLELIST;
+	psoDesc.PT = PRIMITIVETOPOLOGY::LINELIST;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.NumRTs = 1;
-	psoDesc.RTFormats[0] = Renderer::RTFormat_HDR;
+	psoDesc.NumRTs = 3;
+	psoDesc.RTFormats[0] = Renderer::RTFormat_GBuffer0;
+	psoDesc.RTFormats[1] = Renderer::RTFormat_GBuffer1;
+	psoDesc.RTFormats[2] = Renderer::RTFormat_GBuffer2;
 	psoDesc.SampleDesc.Count = 1;
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.DSFormat = Renderer::DSFormat_Full;
 
-	m_cacheGraphics[SimpleColorSolid] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleColorSolid].get());
-
-	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
-	m_cacheGraphics[SimpleColorWireframe] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleColorWireframe].get());
+	m_cacheGraphics[GridSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[GridSolid].get());
 
 	// PBR
 	psoDesc.VS = new VertexShader();
@@ -80,6 +76,7 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 		psoDesc.IL = new VertexLayout();
 		device.CreateInputLayout(layoutDesc, 5, psoDesc.IL);
 	}
+	psoDesc.PT = PRIMITIVETOPOLOGY::TRIANGLELIST;
 	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
 	psoDesc.NumRTs = 3;
 	psoDesc.RTFormats[0] = Renderer::RTFormat_GBuffer0;
@@ -104,6 +101,15 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.RS->m_desc.FillMode = FILL_WIREFRAME;
 	m_cacheGraphics[PBRSimpleWireframe] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[PBRSimpleWireframe].get());
+
+	// Simple Depth
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = nullptr;
+	device.CreateShader(L"Shaders\\SimpleDepth.hlsl", psoDesc.VS);
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_GREATER;
+	m_cacheGraphics[SimpleDepth] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleDepth].get());
 
 	// Skybox
 	psoDesc.VS = new VertexShader();
@@ -157,6 +163,14 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	device.CreateShader(L"Shaders\\LightingPass.hlsl", psoDesc.PS);
 	m_cacheGraphics[LightingPass] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[LightingPass].get());
+
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\SobelFilter.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\SobelFilter.hlsl", psoDesc.PS);
+	psoDesc.RTFormats[0] = Renderer::RTFormat_LDR;
+	m_cacheGraphics[SobelFilter] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SobelFilter].get());
 }
 
 void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)

@@ -10,8 +10,8 @@ namespace Graphics
 
 enum eGPSO
 {
-	SimpleColorSolid,
-	SimpleColorWireframe,
+	GridSolid,
+	SimpleDepth,
 	PBRSimpleSolid,
 	PBRSimpleWireframe,
 	PBRSolid,
@@ -21,6 +21,7 @@ enum eGPSO
 	TonemappingReinhard,
 	LightingPass,
 	Background,
+	SobelFilter,
 
 	GPSO_MAX,
 };

@@ -9,6 +9,7 @@ public:
 	static void ShowCameraSettings();
 
 	static bool Wireframe;
+	static bool DebugGrid;
 
 	static int HDRSkybox;
 	static int PBRModel;

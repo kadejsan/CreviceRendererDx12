@@ -168,6 +168,9 @@
     <ClInclude Include="GraphicsEnums.h">
       <Filter>Engine\Graphics\GpuApi</Filter>
     </ClInclude>
+    <ClInclude Include="Grid.h">
+      <Filter>Engine\Mesh</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -269,11 +272,11 @@
     <ClCompile Include="UIContext.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
+    <ClCompile Include="Grid.cpp">
+      <Filter>Engine\Mesh</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\SimpleColor.hlsl">
-      <Filter>Engine\Graphics\Shaders</Filter>
-    </None>
     <None Include="packages.config" />
     <None Include="Shaders\Font.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
@@ -315,6 +318,15 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\LightingPass.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\Grid.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\SimpleDepth.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\SobelFilter.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

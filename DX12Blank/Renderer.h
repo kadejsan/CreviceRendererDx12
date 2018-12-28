@@ -25,6 +25,7 @@ public:
 
 	inline void SetGBuffer(bool set = true) { set ? m_gbuffer.Activate() : m_gbuffer.Deactivate(); }
 	inline void SetFrameBuffer(bool set = true) { set ? m_frameBuffer.Activate() : m_frameBuffer.Deactivate(); }
+	inline void SetSelectionDepth() { m_selectionDepth.Clear(0.0f); GetDevice()->BindRenderTargets(0, nullptr, m_selectionDepth.GetTexture()); }
 
 	void InitializeHitProxyBuffers();
 	void InitializeIBLTextures(const std::string& name);
@@ -33,6 +34,7 @@ public:
 	void BindGBuffer();
 	void BindEnvTexture(SHADERSTAGE stage, int slot);
 
+	void EdgeDetection();
 	void RenderLighting();
 	void RenderBackground();
 	void DoPostProcess();
@@ -58,6 +60,8 @@ private:
 	
 	GPUBuffer*					  m_hitProxy;
 	GPUReadbackBuffer*			  m_hitProxyReadback;
+	RenderTarget				  m_selectionTexture;
+	DepthTarget					  m_selectionDepth;
 
 public:
 	static const Graphics::FORMAT RTFormat_LDR = Graphics::FORMAT_R8G8B8A8_UNORM;

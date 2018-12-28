@@ -5,8 +5,9 @@
 #include "imgui.h"
 
 bool UIContext::Wireframe = false;
+bool UIContext::DebugGrid = true;
 
-int UIContext::HDRSkybox = 0;
+int UIContext::HDRSkybox = 1;
 int UIContext::PBRModel = 0;
 
 int UIContext::CubemapRotation = 0;
@@ -58,8 +59,9 @@ void UIContext::ShowSceneSettings()
 	ImGui::Begin("Scene settings", &showSceneSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 	{
 		ImGui::Checkbox("Wireframe", &Wireframe);
+		ImGui::Checkbox("Grid", &DebugGrid);
 
-		const char* skyboxes[] = { "Street", "Rooftop", "Cape Hill", "Venice Sunset", "Newport Loft" };
+		const char* skyboxes[] = { "Black", "Street", "Rooftop", "Cape Hill", "Venice Sunset", "Newport Loft" };
 		ImGui::Combo("HDR Skybox", &HDRSkybox, skyboxes, IM_ARRAYSIZE(skyboxes));
 
 		ImGui::SliderInt("Skybox Rotation", &CubemapRotation, 0, 360);

@@ -144,6 +144,7 @@
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="GraphicsEnums.h" />
     <ClInclude Include="GraphicsResource.h" />
+    <ClInclude Include="Grid.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Include_DX12.h" />
     <ClInclude Include="Lib\imgui\include\imconfig.h" />
@@ -184,6 +185,7 @@
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
+    <ClCompile Include="Grid.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Lib\imgui\src\imgui.cpp" />
     <ClCompile Include="Lib\imgui\src\imgui_draw.cpp" />
@@ -208,7 +210,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="Shaders\SimpleColor.hlsl">
+    <None Include="Shaders\Grid.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -273,6 +275,16 @@
       <FileType>Document</FileType>
     </None>
     <None Include="Shaders\PBRMaterialSimple.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SimpleDepth.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SobelFilter.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -484,6 +484,8 @@ namespace Graphics
 		UINT		BindFlags;
 		UINT		CPUAccessFlags;
 		UINT		MiscFlags;
+		FLOAT		ClearDepth;
+		UINT8		ClearStencil;
 
 		TextureDesc()
 			: Width(0)
@@ -496,6 +498,8 @@ namespace Graphics
 			, BindFlags(0)
 			, CPUAccessFlags(0)
 			, MiscFlags(0)
+			, ClearDepth(1.0f)
+			, ClearStencil(0)
 		{}
 	};
 

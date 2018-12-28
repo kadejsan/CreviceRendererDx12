@@ -11,6 +11,7 @@ struct PixelShaderInput
 };
 
 Texture2D sceneColor: register(t0);
+Texture2D selectionColor: register(t1);
 SamplerState defaultSampler : register(s0);
 
 PixelShaderInput vs_main(uint vertexID : SV_VertexID)
@@ -49,6 +50,9 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	// Scale color by ratio of average luminances.
 	float3 mappedColor = (mappedLuminance / luminance) * color;
 
+	// Sample selection color
+	float3 selection = selectionColor.Sample(defaultSampler, pin.texcoord).rgb;
+
 	// Gamma correction.
-	return float4(LinearToGamma(mappedColor), 1.0);
+	return float4(LinearToGamma(mappedColor) + selection, 1.0);
 }

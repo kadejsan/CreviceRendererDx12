@@ -65,6 +65,15 @@ void CreviceWindow::OnRender()
 			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_objPsCB, 0);
 
+			// Render debug grid
+			if (UIContext::DebugGrid)
+			{
+				RenderObject ro;
+				UpdateObjectConstantBuffer(ro, 0);
+				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::GridSolid));
+				m_grid.Render();
+			}
+
 #if PBR_MODEL
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 
@@ -84,15 +93,8 @@ void CreviceWindow::OnRender()
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
-			int i = 1;
+			int i = 2;
 			const Frustum& frustum = GetCamera()->m_frustum;
-			if (frustum.CheckBox(m_grid.m_mesh->GetBoundingBox(m_grid.m_world)))
-			{
-				m_grid.m_color = float3(UIContext::Color);
-				UpdateObjectConstantBuffer(m_grid, i++);
-				m_grid.m_mesh->Draw(GetDevice());
-			}
-
 			for (auto o : m_renderObjects)
 			{
 				//Update buffer
@@ -118,20 +120,7 @@ void CreviceWindow::OnRender()
 			GetRenderer().RenderLighting();
 		}
 
-		UINT hitProxyID = GetRenderer().ReadBackHitProxy();
-		if(m_readHitProxy)
-		{
-			for (auto& ro : m_renderObjects)
-				ro.m_color = float3(UIContext::Color);
-
-			if (hitProxyID != -1)
-			{
-				// set selection
-				m_readHitProxy = false;
-				if (hitProxyID > 1) m_renderObjects[hitProxyID - 2].m_color = float3(1, 0, 0);
-			}
-		}
-
+		if(UIContext::HDRSkybox > 0)
 		{
 			ScopedTimer perf("Rendering Background", Renderer::GGraphicsDevice);
 
@@ -141,6 +130,38 @@ void CreviceWindow::OnRender()
 		}
 
 		GetRenderer().SetFrameBuffer(false);
+
+		UINT hitProxyID = GetRenderer().ReadBackHitProxy();
+		if (m_readHitProxy)
+		{
+			if (hitProxyID != -1)
+			{
+				// set selection
+				m_readHitProxy = false;
+				m_hitProxyID = hitProxyID;
+			}
+		}
+
+		if (m_hitProxyID != -1)
+		{
+			ScopedTimer perf("Render Selection", Renderer::GGraphicsDevice);
+
+			// Render to custom depth (selection)
+			GetRenderer().SetSelectionDepth();
+
+			if (m_hitProxyID > 1)
+			{
+				RenderObject& ro = m_renderObjects[m_hitProxyID - 2];
+
+				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
+				UpdateObjectConstantBuffer(ro, 0);
+				ro.m_mesh->Draw(GetDevice());
+			}
+
+			// sobel-filter edge detection post process
+			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 0);
+			GetRenderer().EdgeDetection();
+		}
 
 		GetDevice().SetBackBuffer();
 
@@ -209,53 +230,32 @@ void CreviceWindow::UpdateHDRSkybox()
 		std::string name;
 		switch (UIContext::HDRSkybox)
 		{
-		case 0:
+		case 1:
 			name = "environment";
 			break;
-		case 1:
+		case 2:
 			name = "rooftop";
 			break;
-		case 2:
+		case 3:
 			name = "cape_hill";
 			break;
-		case 3:
+		case 4:
 			name = "venice_sunset";
 			break;
-		case 4:
+		case 5:
 			name = "newport_loft";
 			break;
 		}
 
-		GetRenderer().InitializeIBLTextures(name);
+		if(UIContext::HDRSkybox > 0) 
+			GetRenderer().InitializeIBLTextures(name);
 		m_skyboxID = UIContext::HDRSkybox;
 	}
 }
 
 void CreviceWindow::InitializeRenderObjects()
 {
-	{
-		GeometryGenerator::MeshData grid = GeometryGenerator::CreateGrid(20.0f, 20.0f, 10, 10);
-		m_grid.m_mesh.reset(new Mesh());
-
-		const UINT vbByteSize = (UINT)grid.Vertices.size() * sizeof(GeometryGenerator::Vertex);
-		const UINT ibByteSize = (UINT)grid.Indices32.size() * sizeof(UINT16);
-
-		m_grid.m_mesh->CreateVertexBuffers(GetDevice(), grid.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
-		m_grid.m_mesh->CreateIndexBuffers(GetDevice(), grid.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
-
-		XMMATRIX worldMtx = XMMatrixTranslation(-1.0f, -1.0f, -1.0f);
-		XMStoreFloat4x4(&m_grid.m_world, worldMtx);
-
-		Submesh submesh;
-		submesh.IndexCount = (UINT)grid.Indices32.size();
-		submesh.StartIndexLocation = 0;
-		submesh.BaseVertexLocation = 0;
-		submesh.Bounds = grid.BBox;
-
-		m_grid.m_mesh->m_drawArgs.reserve(1);
-		m_grid.m_mesh->m_drawArgs.push_back(submesh);
-		m_grid.m_color = float3(1, 1, 1);
-	}
+	m_grid.Initialize();
 
 	static const UINT32 NumObjects = 64;
 	for (UINT32 i = 0; i < NumObjects; ++i)
@@ -286,7 +286,7 @@ void CreviceWindow::InitializeRenderObjects()
 			ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
 			ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
 
-			XMMATRIX worldMtx = XMMatrixTranslation(-8.0f + 2.0f * (i / 8), 0, -8.0f + 2.0f* (i % 8));
+			XMMATRIX worldMtx = XMMatrixTranslation(-7.0f + 2.0f * (i / 8), 0, -7.0f + 2.0f* (i % 8));
 			XMStoreFloat4x4(&ro.m_world, worldMtx);
 
 			Submesh submesh;

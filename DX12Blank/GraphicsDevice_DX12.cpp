@@ -2836,8 +2836,8 @@ namespace Graphics
 		optimizedClearValue.Color[1] = 0;
 		optimizedClearValue.Color[2] = 0;
 		optimizedClearValue.Color[3] = 0;
-		optimizedClearValue.DepthStencil.Depth = 1.0f;
-		optimizedClearValue.DepthStencil.Stencil = 0;
+		optimizedClearValue.DepthStencil.Depth = desc.ClearDepth;
+		optimizedClearValue.DepthStencil.Stencil = desc.ClearStencil;
 		optimizedClearValue.Format = resDesc.Format;
 		if (optimizedClearValue.Format == DXGI_FORMAT_R16_TYPELESS)
 		{

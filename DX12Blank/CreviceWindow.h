@@ -6,6 +6,7 @@
 #include "PSOCache.h"
 #include "SamplerCache.h"
 #include "RenderObject.h"
+#include "Grid.h"
 #include "Renderer.h"
 #include "RenderTarget.h"
 
@@ -98,7 +99,8 @@ private:
 		EMT_Max
 	};
 	RenderObject	m_model[EMT_Max];
-	RenderObject	m_grid;
+	Grid			m_grid;
 
 	bool			m_readHitProxy;
+	int				m_hitProxyID;
 };

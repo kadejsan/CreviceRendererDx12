@@ -37,6 +37,9 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		m_gbuffer.Add(RTFormat_GBuffer2);
 
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
+		 
+		m_selectionTexture.Initialize(window->GetWidth(), window->GetHeight());
+		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight());
 
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
@@ -244,6 +247,19 @@ void Renderer::BindEnvTexture(SHADERSTAGE stage, int slot)
 	GGraphicsDevice->BindResource(stage, m_envTexture, slot);
 }
 
+void Renderer::EdgeDetection()
+{
+	m_selectionTexture.Activate();
+
+	GGraphicsDevice->BindResource(PS, m_selectionDepth.GetTexture(), 0);
+
+	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::SobelFilter));
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
+	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
+
+	m_selectionTexture.Deactivate();
+}
+
 void Renderer::RenderLighting()
 {
 	BindGBuffer();
@@ -269,6 +285,7 @@ void Renderer::DoPostProcess()
 {
 	// Reinhard Tonemapping
 	GGraphicsDevice->BindResource(PS, m_frameBuffer.GetTexture(), 0);
+	GGraphicsDevice->BindResource(PS, m_selectionTexture.GetTexture(), 1);
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::TonemappingReinhard));
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
