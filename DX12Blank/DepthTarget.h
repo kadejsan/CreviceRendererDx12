@@ -15,7 +15,7 @@ public:
 	DepthTarget();
 	~DepthTarget();
 
-	void Initialize(int width, int height, UINT MSAAC = 1);
+	void Initialize(int width, int height, UINT MSAAC = 1, float clearDepth = 1.0f, UINT8 clearStencil = 0);
 	void InitializeCube(int size, bool independentFaces = false);
 	void Clear(float clearVal = 1.0f, UINT8 clearStencil = 0);
 	void CopyFrom(const DepthTarget& from);

@@ -106,6 +106,7 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = nullptr;
 	device.CreateShader(L"Shaders\\SimpleDepth.hlsl", psoDesc.VS);
+	psoDesc.DSS->m_desc.DepthEnable = true;
 	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
 	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_GREATER;
 	m_cacheGraphics[SimpleDepth] = std::make_unique<GraphicsPSO>();
@@ -171,6 +172,32 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.RTFormats[0] = Renderer::RTFormat_LDR;
 	m_cacheGraphics[SobelFilter] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SobelFilter].get());
+
+	// Simple Color
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\SimpleColor.hlsl", psoDesc.PS);
+	{
+		VertexInputLayoutDesc layoutDesc[5] =
+		{
+		{ "POSITION", 0, FORMAT_R32G32B32_FLOAT, 0, 0, INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, FORMAT_R32G32B32_FLOAT, 0, 12, INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 24, INPUT_PER_VERTEX_DATA, 0 },
+		{ "BITANGENT", 0, FORMAT_R32G32B32_FLOAT, 0, 36, INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, FORMAT_R32G32_FLOAT, 0, 48, INPUT_PER_VERTEX_DATA, 0 }
+		};
+		psoDesc.IL = new VertexLayout();
+		device.CreateInputLayout(layoutDesc, 5, psoDesc.IL);
+	}
+	psoDesc.NumRTs = 1;
+	psoDesc.RTFormats[0] = Renderer::RTFormat_HDR;
+	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
+	psoDesc.DSS->m_desc.DepthEnable = true;
+	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_LESS;
+	psoDesc.DSFormat = Renderer::DSFormat_Full;
+	m_cacheGraphics[GizmoSolid] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[GizmoSolid].get());
 }
 
 void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)

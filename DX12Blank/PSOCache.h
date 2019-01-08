@@ -11,6 +11,7 @@ namespace Graphics
 enum eGPSO
 {
 	GridSolid,
+	GizmoSolid,
 	SimpleDepth,
 	PBRSimpleSolid,
 	PBRSimpleWireframe,

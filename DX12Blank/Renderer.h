@@ -39,7 +39,12 @@ public:
 	void RenderBackground();
 	void DoPostProcess();
 
-	UINT ReadBackHitProxy();
+	struct HitProxyData
+	{
+		UINT HitProxyID;
+		float Depth;
+	};
+	HitProxyData ReadBackHitProxy();
 private:
 	void InitializeConstantBuffers();
 

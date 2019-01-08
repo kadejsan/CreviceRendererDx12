@@ -7,6 +7,7 @@
 #include "SamplerCache.h"
 #include "RenderObject.h"
 #include "Grid.h"
+#include "Gizmo.h"
 #include "Renderer.h"
 #include "RenderTarget.h"
 
@@ -16,6 +17,8 @@ class Material;
 class CreviceWindow : public BaseWindow
 {
 public:
+	static const UINT st_objectsOffset = 5;
+
 	CreviceWindow( std::string name );
 
 	virtual void OnInit();
@@ -100,6 +103,7 @@ private:
 	};
 	RenderObject	m_model[EMT_Max];
 	Grid			m_grid;
+	Gizmo			m_gizmo;
 
 	bool			m_readHitProxy;
 	int				m_hitProxyID;

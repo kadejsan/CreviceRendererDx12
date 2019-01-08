@@ -39,7 +39,7 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
 		 
 		m_selectionTexture.Initialize(window->GetWidth(), window->GetHeight());
-		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight());
+		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight(), 1U, 0.0f, 0);
 
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
@@ -97,7 +97,7 @@ void Renderer::InitializeHitProxyBuffers()
 	bd.BindFlags = BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
 	bd.Usage = USAGE_DEFAULT;
 	bd.CpuAccessFlags = 0;
-	bd.ByteWidth = sizeof(int);
+	bd.ByteWidth = sizeof(int)*2;
 	bd.StructureByteStride = 4;
 	bd.Format = FORMAT_R32_UINT;
 
@@ -291,7 +291,7 @@ void Renderer::DoPostProcess()
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 }
 
-UINT Renderer::ReadBackHitProxy()
+Renderer::HitProxyData Renderer::ReadBackHitProxy()
 {
 	if (m_hitProxyReadback->IsLocked())
 	{
@@ -301,7 +301,11 @@ UINT Renderer::ReadBackHitProxy()
 			GGraphicsDevice->Unmap(m_hitProxyReadback);
 			m_hitProxyReadback->m_isLocked = false;
 			UINT* ptrU = (UINT*)ptr;
-			return *ptrU;
+			HitProxyData data;
+			data.HitProxyID = *ptrU;
+			float* ptrF = (float*)ptr;
+			data.Depth = *(ptrF + 1);
+			return data;
 		}
 	}
 
@@ -311,5 +315,7 @@ UINT Renderer::ReadBackHitProxy()
 		m_hitProxyReadback->m_isLocked = true;
 	}
 
-	return -1;
+	HitProxyData data;
+	data.HitProxyID = -1;
+	return data;
 }

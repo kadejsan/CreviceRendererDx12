@@ -15,7 +15,7 @@ DepthTarget::~DepthTarget()
 	SAFE_DELETE(m_textureResolvedMSAA);
 }
 
-void DepthTarget::Initialize(int width, int height, UINT MSAAC)
+void DepthTarget::Initialize(int width, int height, UINT MSAAC, float clearDepth, UINT8 clearStencil)
 {
 	SAFE_DELETE(m_texture);
 	SAFE_DELETE(m_textureResolvedMSAA);
@@ -36,7 +36,8 @@ void DepthTarget::Initialize(int width, int height, UINT MSAAC)
 	depthDesc.BindFlags = BIND_DEPTH_STENCIL | BIND_SHADER_RESOURCE;
 	depthDesc.CPUAccessFlags = 0;
 	depthDesc.MiscFlags = 0;
-	depthDesc.ClearDepth = 0.0f;
+	depthDesc.ClearDepth = clearDepth;
+	depthDesc.ClearStencil = clearStencil;
 
 	Renderer::GetDevice()->CreateTexture2D(depthDesc, nullptr, &m_texture);
 	Renderer::GetDevice()->TransitionBarrier(m_texture, RESOURCE_STATE_COMMON, RESOURCE_STATE_DEPTH_WRITE);

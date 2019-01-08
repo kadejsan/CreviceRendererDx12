@@ -88,12 +88,12 @@ void CreviceWindow::OnRender()
 
 			const RenderObject& model = m_model[UIContext::PBRModel];
 			UpdateObjectConstantBuffer(model, 1);
-			model.m_mesh->Draw(GetDevice(), model.m_world, GetCamera()->m_frustum);
+			model.m_mesh->Draw(GetDevice());
 #else
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
-			int i = 2;
+			int i = st_objectsOffset;
 			const Frustum& frustum = GetCamera()->m_frustum;
 			for (auto o : m_renderObjects)
 			{
@@ -129,16 +129,50 @@ void CreviceWindow::OnRender()
 			GetRenderer().RenderBackground();
 		}
 
+		// Render Gizmo
+		if (m_gizmo.IsActive())
+		{
+			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_objPsCB, 0);
+
+			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::GizmoSolid));
+
+			for (int i = eAxis::X; i <= eAxis::Z; ++i)
+			{
+				UpdateObjectConstantBuffer(m_gizmo.GetAxis(i).m_renderObject, -1);
+				m_gizmo.Render(i);
+			}
+		}
+
 		GetRenderer().SetFrameBuffer(false);
 
-		UINT hitProxyID = GetRenderer().ReadBackHitProxy();
+#pragma region HitProxy
+		Renderer::HitProxyData hitProxyData = GetRenderer().ReadBackHitProxy();
+		m_gizmo.UpdateFocus(m_lastMousePos.x, m_lastMousePos.y, GetWidth(), GetHeight(), m_camera);
+
 		if (m_readHitProxy)
 		{
-			if (hitProxyID != -1)
+			if (hitProxyData.HitProxyID != -1)
 			{
 				// set selection
 				m_readHitProxy = false;
-				m_hitProxyID = hitProxyID;
+				
+				if (!m_gizmo.IsGizmoActive())
+				{
+					if (hitProxyData.HitProxyID >= st_objectsOffset)
+					{
+						m_hitProxyID = hitProxyData.HitProxyID;
+
+						RenderObject& ro = m_renderObjects[m_hitProxyID - st_objectsOffset];
+
+						m_gizmo.SetActive(true, ro.GetTranslation());
+					}
+					else if (hitProxyData.HitProxyID < Gizmo::st_gizmoOffset)
+					{
+						m_hitProxyID = hitProxyData.HitProxyID;
+
+						m_gizmo.SetActive(false);
+					}
+				}
 			}
 		}
 
@@ -149,9 +183,13 @@ void CreviceWindow::OnRender()
 			// Render to custom depth (selection)
 			GetRenderer().SetSelectionDepth();
 
-			if (m_hitProxyID > 1)
+			if (m_hitProxyID >= (int)st_objectsOffset)
 			{
-				RenderObject& ro = m_renderObjects[m_hitProxyID - 2];
+				RenderObject& ro = m_renderObjects[m_hitProxyID - st_objectsOffset];
+
+				float d = m_camera->DistanceTo(float3(ro.GetX(), ro.GetY(), ro.GetZ()));
+				m_gizmo.SetScale(d / 15.0f);
+				m_gizmo.SetTranslation(ro.GetX(), ro.GetY(), ro.GetZ());
 
 				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
 				UpdateObjectConstantBuffer(ro, 0);
@@ -162,6 +200,7 @@ void CreviceWindow::OnRender()
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 0);
 			GetRenderer().EdgeDetection();
 		}
+#pragma endregion HitProxy
 
 		GetDevice().SetBackBuffer();
 
@@ -210,16 +249,27 @@ void CreviceWindow::OnMouseDown(WPARAM btnState, int x, int y)
 	if ((btnState & MK_LBUTTON) != 0)
 	{
 		m_readHitProxy = true;
+		m_gizmo.SetDrag(true);
 	}
 }
 
 void CreviceWindow::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	BaseWindow::OnMouseUp(btnState, x, y);
+
+	m_gizmo.SetDrag(false);
 }
 
 void CreviceWindow::OnMouseMove(WPARAM btnState, int x, int y)
 {
+	if ((btnState & MK_LBUTTON) != 0 && m_hitProxyID >= (int)st_objectsOffset)
+	{
+		RenderObject& ro = m_renderObjects[m_hitProxyID - st_objectsOffset];
+
+		m_gizmo.EditTransform(x, y, GetWidth(), GetHeight(), m_camera, ro.m_world);
+		m_gizmo.SetTranslation(ro.GetX(), ro.GetY(), ro.GetZ());
+	}
+
 	BaseWindow::OnMouseMove(btnState, x, y);
 }
 
@@ -256,6 +306,7 @@ void CreviceWindow::UpdateHDRSkybox()
 void CreviceWindow::InitializeRenderObjects()
 {
 	m_grid.Initialize();
+	m_gizmo.Initialize();
 
 	static const UINT32 NumObjects = 64;
 	for (UINT32 i = 0; i < NumObjects; ++i)

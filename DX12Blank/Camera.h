@@ -21,6 +21,13 @@ public:
 	virtual CameraType GetType() const = 0;
 
 	void SetAspectRatio(float aspectRatio) { m_aspectRatio = aspectRatio; }
+	inline float DistanceTo(float3 pos)
+	{
+		XMVECTOR eyePosV = XMLoadFloat3(&m_eyePos);
+		XMVECTOR objPosV = XMLoadFloat3(&pos);
+		float d = XMVector3Length(eyePosV - objPosV).m128_f32[0];
+		return d;
+	}
 
 	float4x4 m_view			= MathHelper::Identity4x4();
 	float4x4 m_invView		= MathHelper::Identity4x4();

@@ -12,7 +12,6 @@ Grid::Grid()
 Grid::~Grid()
 {
 	delete m_vb;
-	delete m_cb;
 }
 
 void Grid::Initialize()
@@ -57,24 +56,6 @@ void Grid::Initialize()
 		InitData.SysMem = verts;
 		m_vb = new GPUBuffer;
 		(*Renderer::GetDevice()).CreateBuffer(bd, &InitData, m_vb);
-	}
-
-	// CB
-	{
-		m_cb = new Graphics::GPUBuffer();
-
-		GridCB objCB;
-		ZeroMemory(&objCB, sizeof(objCB));
-
-		GPUBufferDesc bd;
-		bd.BindFlags = BIND_CONSTANT_BUFFER;
-		bd.Usage = USAGE_DEFAULT;
-		bd.CpuAccessFlags = 0;
-		bd.ByteWidth = sizeof(GridCB);
-		SubresourceData initData;
-		initData.SysMem = &objCB;
-		(*Renderer::GetDevice()).CreateBuffer(bd, &initData, m_cb);
-		(*Renderer::GetDevice()).TransitionBarrier(m_cb, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 }
 

@@ -56,6 +56,8 @@ void RenderTarget::Initialize(UINT width, UINT height, bool hasDepth /*= false*/
 		textureDesc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
 		textureDesc.CPUAccessFlags = 0;
 		textureDesc.MiscFlags = 0;
+		textureDesc.ClearDepth = 1.0f;
+		textureDesc.ClearStencil = 0;
 
 		m_numViews = 1;
 		Texture2D* texture = new Texture2D;

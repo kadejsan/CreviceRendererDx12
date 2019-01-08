@@ -137,6 +137,7 @@
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EngineTimer.h" />
+    <ClInclude Include="Gizmo.h" />
     <ClInclude Include="GraphicsAPI.h" />
     <ClInclude Include="GraphicsDevice_DX12.h" />
     <ClInclude Include="DXHelper.h" />
@@ -183,6 +184,7 @@
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="D3DUtils.cpp" />
     <ClCompile Include="EngineTimer.cpp" />
+    <ClCompile Include="Gizmo.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
     <ClCompile Include="Grid.cpp" />
@@ -285,6 +287,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SobelFilter.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SimpleColor.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

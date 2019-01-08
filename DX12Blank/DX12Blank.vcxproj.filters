@@ -171,6 +171,9 @@
     <ClInclude Include="Grid.h">
       <Filter>Engine\Mesh</Filter>
     </ClInclude>
+    <ClInclude Include="Gizmo.h">
+      <Filter>Engine\Mesh</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -275,6 +278,9 @@
     <ClCompile Include="Grid.cpp">
       <Filter>Engine\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="Gizmo.cpp">
+      <Filter>Engine\Mesh</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -327,6 +333,9 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\SobelFilter.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\SimpleColor.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

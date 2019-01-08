@@ -136,15 +136,16 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 {
 	float2 pixelCoord = pin.texcoord.xy;
 
+	float depth = Depth.SampleLevel(Sampler, pixelCoord, 0).x;
 	float4 rm = GBuffer2.Sample(Sampler, pixelCoord);
 	// Hit proxy
 	if (all(abs(pixelCoord - (gMousePos.xy / gScreenDim.xy)) < 0.001f))
 	{
 		HitProxy[0] = rm.w;
+		HitProxy[1] = asuint(depth);
 	}
 
 	// is sky
-	float depth = Depth.SampleLevel(Sampler, pixelCoord, 0).x;
 	if (!IsSky(depth)) discard;
 
 	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));
