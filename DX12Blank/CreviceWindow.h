@@ -52,7 +52,7 @@ private:
 	void InitializeMesh();
 	void InitializeConstantBuffers();
 	void UpdateGlobalConstantBuffer();
-	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id);
+	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id = -1);
 
 	struct ObjectConstantsVS
 	{

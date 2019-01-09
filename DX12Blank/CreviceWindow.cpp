@@ -98,7 +98,7 @@ void CreviceWindow::OnRender()
 			for (auto o : m_renderObjects)
 			{
 				//Update buffer
-				if (frustum.CheckBox(o.m_mesh->GetBoundingBox(o.m_world)))
+				if (frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
 				{
 					UpdateObjectConstantBuffer(o, i++);
 					o.m_mesh->Draw(GetDevice());
@@ -138,7 +138,18 @@ void CreviceWindow::OnRender()
 
 			for (int i = eAxis::X; i <= eAxis::Z; ++i)
 			{
-				UpdateObjectConstantBuffer(m_gizmo.GetAxis(i).m_renderObject, -1);
+				switch (m_gizmo.GetType())
+				{
+				case Translator:
+					UpdateObjectConstantBuffer(m_gizmo.GetAxis(i).m_translator);
+					break;
+				case Rotator:
+					UpdateObjectConstantBuffer(m_gizmo.GetAxis(i).m_rotator);
+					break;
+				case Scaler:
+					UpdateObjectConstantBuffer(m_gizmo.GetAxis(i).m_scaler);
+					break;
+				}
 				m_gizmo.Render(i);
 			}
 		}
@@ -189,7 +200,7 @@ void CreviceWindow::OnRender()
 
 				float d = m_camera->DistanceTo(float3(ro.GetX(), ro.GetY(), ro.GetZ()));
 				m_gizmo.SetScale(d / 15.0f);
-				m_gizmo.SetTranslation(ro.GetX(), ro.GetY(), ro.GetZ());
+				m_gizmo.SetTransform(ro.GetTransform());
 
 				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
 				UpdateObjectConstantBuffer(ro, 0);
@@ -236,6 +247,18 @@ void CreviceWindow::OnDestroy()
 void CreviceWindow::OnKeyDown(UINT8 key)
 {
 	BaseWindow::OnKeyDown(key);
+	if (key == '1')
+	{
+		m_gizmo.SetType(Translator);
+	}
+	else if (key == '2')
+	{
+		m_gizmo.SetType(Rotator);
+	}
+	else if (key == '3')
+	{
+		m_gizmo.SetType(Scaler);
+	}
 }
 void CreviceWindow::OnKeyUp(UINT8 key)
 {
@@ -266,8 +289,9 @@ void CreviceWindow::OnMouseMove(WPARAM btnState, int x, int y)
 	{
 		RenderObject& ro = m_renderObjects[m_hitProxyID - st_objectsOffset];
 
-		m_gizmo.EditTransform(x, y, GetWidth(), GetHeight(), m_camera, ro.m_world);
-		m_gizmo.SetTranslation(ro.GetX(), ro.GetY(), ro.GetZ());
+		m_gizmo.EditTransform(x, y, GetWidth(), GetHeight(), m_camera, ro.m_transform);
+		ro.SetWorld();
+		m_gizmo.SetTransform(ro.GetTransform());
 	}
 
 	BaseWindow::OnMouseMove(btnState, x, y);
@@ -314,7 +338,7 @@ void CreviceWindow::InitializeRenderObjects()
 		RenderObject ro;
 		ro.m_mesh.reset(new Mesh());
 		{
-			UINT32 j = 0;// i % 4;
+			UINT32 j = 1;// i % 4;
 			GeometryGenerator::MeshData obj;
 			switch (j)
 			{
@@ -336,9 +360,7 @@ void CreviceWindow::InitializeRenderObjects()
 
 			ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
 			ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
-
-			XMMATRIX worldMtx = XMMatrixTranslation(-7.0f + 2.0f * (i / 8), 0, -7.0f + 2.0f* (i % 8));
-			XMStoreFloat4x4(&ro.m_world, worldMtx);
+			ro.SetTranslation(-7.0f + 2.0f * (i / 8), 0, -7.0f + 2.0f* (i % 8));
 
 			Submesh submesh;
 			submesh.IndexCount = (UINT)obj.Indices32.size();
@@ -365,19 +387,13 @@ void CreviceWindow::InitializeTextures()
 void CreviceWindow::InitializeMesh()
 {
 	m_model[EMT_Sphere].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/sphere.obj");
-	m_model[EMT_Sphere].m_world = MathHelper::Identity4x4();
-	m_model[EMT_Sphere].m_world._11 *= 0.1f;
-	m_model[EMT_Sphere].m_world._22 *= 0.1f;
-	m_model[EMT_Sphere].m_world._33 *= 0.1f;
+	m_model[EMT_Sphere].SetScale(0.1f, 0.1f, 0.1f);
 
 	m_model[EMT_Cerberus].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
-	m_model[EMT_Cerberus].m_world = m_model[EMT_Sphere].m_world;
+	m_model[EMT_Cerberus].SetScale(0.1f, 0.1f, 0.1f);
 
 	m_skybox.m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/skybox.obj");
-	m_skybox.m_world = MathHelper::Identity4x4();
-	m_skybox.m_world._11 *= 100.0f;
-	m_skybox.m_world._22 *= 100.0f;
-	m_skybox.m_world._33 *= 100.0f;
+	m_skybox.SetScale(100.0f, 100.0f, 100.0f);
 }
 
 void CreviceWindow::InitializeConstantBuffers()
@@ -514,7 +530,7 @@ void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject,
 	{
 		const Camera* cam = GetCamera();
 
-		XMMATRIX world = XMLoadFloat4x4(&renderObject.m_world);
+		XMMATRIX world = XMLoadFloat4x4(&renderObject.GetWorld());
 		XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
 		XMMATRIX proj = XMLoadFloat4x4(&cam->m_proj);
 		XMMATRIX worldViewProj = world * view * proj;
