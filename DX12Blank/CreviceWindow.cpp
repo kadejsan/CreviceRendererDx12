@@ -46,9 +46,19 @@ void CreviceWindow::OnUpdate()
 
 void CreviceWindow::OnRender()
 {
-	UIContext::DrawUI();
-
 	GetDevice().PresentBegin();
+
+	UIContext::DrawUI(this);
+	{
+		if (m_hitProxyID >= st_objectsOffset)
+		{
+			UINT id = m_hitProxyID - st_objectsOffset;
+
+			RenderObject& ro = m_renderObjects[id];
+			UIContext::ShowObjectSettings(ro);
+			ro.SetWorld();
+		}
+	}
 
 	UpdateHDRSkybox();
 
@@ -98,7 +108,7 @@ void CreviceWindow::OnRender()
 			for (auto o : m_renderObjects)
 			{
 				//Update buffer
-				if (frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
+				if (o.IsEnabled() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
 				{
 					UpdateObjectConstantBuffer(o, i++);
 					o.m_mesh->Draw(GetDevice());
@@ -197,14 +207,16 @@ void CreviceWindow::OnRender()
 			if (m_hitProxyID >= (int)st_objectsOffset)
 			{
 				RenderObject& ro = m_renderObjects[m_hitProxyID - st_objectsOffset];
+				if (ro.IsEnabled())
+				{
+					float d = m_camera->DistanceTo(float3(ro.GetX(), ro.GetY(), ro.GetZ()));
+					m_gizmo.SetScale(d / 15.0f);
+					m_gizmo.SetTransform(ro.GetTransform());
 
-				float d = m_camera->DistanceTo(float3(ro.GetX(), ro.GetY(), ro.GetZ()));
-				m_gizmo.SetScale(d / 15.0f);
-				m_gizmo.SetTransform(ro.GetTransform());
-
-				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
-				UpdateObjectConstantBuffer(ro, 0);
-				ro.m_mesh->Draw(GetDevice());
+					GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
+					UpdateObjectConstantBuffer(ro, 0);
+					ro.m_mesh->Draw(GetDevice());
+				}
 			}
 
 			// sobel-filter edge detection post process
@@ -247,17 +259,21 @@ void CreviceWindow::OnDestroy()
 void CreviceWindow::OnKeyDown(UINT8 key)
 {
 	BaseWindow::OnKeyDown(key);
-	if (key == '1')
+
+	if (!ImGui::IsAnyItemActive())
 	{
-		m_gizmo.SetType(Translator);
-	}
-	else if (key == '2')
-	{
-		m_gizmo.SetType(Rotator);
-	}
-	else if (key == '3')
-	{
-		m_gizmo.SetType(Scaler);
+		if (key == '1')
+		{
+			m_gizmo.SetType(Translator);
+		}
+		else if (key == '2')
+		{
+			m_gizmo.SetType(Rotator);
+		}
+		else if (key == '3')
+		{
+			m_gizmo.SetType(Scaler);
+		}
 	}
 }
 void CreviceWindow::OnKeyUp(UINT8 key)
@@ -269,10 +285,13 @@ void CreviceWindow::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	BaseWindow::OnMouseDown(btnState, x, y);
 
-	if ((btnState & MK_LBUTTON) != 0)
+	if (!ImGui::IsAnyWindowHovered())
 	{
-		m_readHitProxy = true;
-		m_gizmo.SetDrag(true);
+		if ((btnState & MK_LBUTTON) != 0)
+		{
+			m_readHitProxy = true;
+			m_gizmo.SetDrag(true);
+		}
 	}
 }
 
@@ -327,53 +346,70 @@ void CreviceWindow::UpdateHDRSkybox()
 	}
 }
 
+void CreviceWindow::AddObject(eObject id, float a, float b, float c, float d, float e)
+{
+	RenderObject ro;
+	ro.m_mesh.reset(new Mesh());
+	{
+		GeometryGenerator::MeshData obj;
+		switch (id)
+		{
+		case eObject::Plane:
+			obj = GeometryGenerator::CreateGrid(a, b, (UINT32)c, (UINT32)d);
+			break;
+		case eObject::Box:
+			obj = GeometryGenerator::CreateBox(a, b, c, (UINT32)d);
+			break;
+		case eObject::Sphere:
+			obj = GeometryGenerator::CreateSphere(a, (UINT32)b, (UINT32)c);
+			break;
+		case eObject::Cone:
+			obj = GeometryGenerator::CreateCylinder(a, 0.0f, b, (UINT32)c, (UINT32)d);
+			break;
+		case eObject::Cylinder:
+			obj = GeometryGenerator::CreateCylinder(a, a, b, (UINT32)c, (UINT32)d);
+			break;
+		}
+
+		const UINT vbByteSize = (UINT)obj.Vertices.size() * sizeof(GeometryGenerator::Vertex);
+		const UINT ibByteSize = (UINT)obj.Indices32.size() * sizeof(UINT16);
+
+		ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
+		ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
+
+		Submesh submesh;
+		submesh.IndexCount = (UINT)obj.Indices32.size();
+		submesh.StartIndexLocation = 0;
+		submesh.BaseVertexLocation = 0;
+		submesh.Bounds = obj.BBox;
+
+		ro.m_mesh->m_drawArgs.reserve(1);
+		ro.m_mesh->m_drawArgs.push_back(submesh);
+		ro.m_color = float3(1, 1, 1);
+	}
+	m_renderObjects.push_back(ro);
+}
+
+void CreviceWindow::ClearScene()
+{
+	m_renderObjects.clear();
+}
+
 void CreviceWindow::InitializeRenderObjects()
 {
 	m_grid.Initialize();
 	m_gizmo.Initialize();
 
-	static const UINT32 NumObjects = 64;
-	for (UINT32 i = 0; i < NumObjects; ++i)
-	{
-		RenderObject ro;
-		ro.m_mesh.reset(new Mesh());
-		{
-			UINT32 j = 1;// i % 4;
-			GeometryGenerator::MeshData obj;
-			switch (j)
-			{
-			case 0:
-				obj = GeometryGenerator::CreateSphere(1.0f, 16, 16);
-				break;
-			case 1:
-				obj = GeometryGenerator::CreateBox(2.0f, 2.0f, 2.0f, 3);
-				break;
-			case 2:
-				obj = GeometryGenerator::CreateCylinder(1.0f, 0.0f, 2.0f, 8, 8);
-				break;
-			case 3:
-				obj = GeometryGenerator::CreateCylinder(1.0f, 1.0f, 2.0f, 8, 8);
-			}
-
-			const UINT vbByteSize = (UINT)obj.Vertices.size() * sizeof(GeometryGenerator::Vertex);
-			const UINT ibByteSize = (UINT)obj.Indices32.size() * sizeof(UINT16);
-
-			ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
-			ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
-			ro.SetTranslation(-7.0f + 2.0f * (i / 8), 0, -7.0f + 2.0f* (i % 8));
-
-			Submesh submesh;
-			submesh.IndexCount = (UINT)obj.Indices32.size();
-			submesh.StartIndexLocation = 0;
-			submesh.BaseVertexLocation = 0;
-			submesh.Bounds = obj.BBox;
-
-			ro.m_mesh->m_drawArgs.reserve(1);
-			ro.m_mesh->m_drawArgs.push_back(submesh);
-			ro.m_color = float3(1, 1, 1);
-		}
-		m_renderObjects.push_back(std::move(ro));
-	}
+	// Scene
+	AddObject(eObject::Plane, 20.0f, 20.0f, 10, 10);
+	AddObject(eObject::Sphere, 1.0f, 16, 16);
+	m_renderObjects[1].SetTranslation(-5, 1, 0);
+	AddObject(eObject::Box, 2.0f, 2.0f, 2.0f, 1);
+	m_renderObjects[2].SetTranslation(-2, 1, 0);
+	AddObject(eObject::Cone, 1.0f, 3.0f, 8.0f, 8.0f);
+	m_renderObjects[3].SetTranslation(1, 1.5f, 0);
+	AddObject(eObject::Cylinder, 1.0f, 3.0f, 8.0f, 8.0f);
+	m_renderObjects[4].SetTranslation(4, 1.5f, 0);
 }
 
 void CreviceWindow::InitializeTextures()
@@ -551,8 +587,8 @@ void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject,
 		ZeroMemory(&objCB, sizeof(objCB));
 
 		objCB.Color = renderObject.m_color;
-		objCB.Roughness = UIContext::Roughness;
-		objCB.Metalness = UIContext::Metalness;
+		objCB.Roughness = renderObject.m_roughness;
+		objCB.Metalness = renderObject.m_metalness;
 		objCB.ObjectID = objectID;
 
 		GetDevice().UpdateBuffer(m_objPsCB, &objCB, sizeof(ObjectConstantsPS));

@@ -14,6 +14,15 @@
 class CubeMesh;
 class Material;
 
+enum eObject
+{
+	Plane,
+	Box,
+	Sphere,
+	Cone,
+	Cylinder
+};
+
 class CreviceWindow : public BaseWindow
 {
 public:
@@ -34,6 +43,9 @@ public:
 	virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 	void UpdateHDRSkybox();
+
+	void AddObject(eObject id, float a = 1.0f, float b = 1.0f, float c = 1.0f, float d = 1.0f, float e = 1.0f);
+	void ClearScene();
 
 	Graphics::GraphicsDevice& GetDevice() { return *Renderer::GetDevice(); }
 	Renderer&				  GetRenderer() { assert(m_renderer != nullptr); return *m_renderer; }

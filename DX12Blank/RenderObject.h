@@ -22,6 +22,9 @@ public:
 	RenderObject();
 	~RenderObject();
 
+	inline bool IsEnabled() const { return m_isEnabled; }
+	inline void SetEnabled(bool enabled) { m_isEnabled = enabled; }
+
 	inline float GetX() const { return m_transform.m_translation.x; }
 	inline float GetY() const { return m_transform.m_translation.y; }
 	inline float GetZ() const { return m_transform.m_translation.z; }
@@ -71,8 +74,11 @@ public:
 		return m_world;
 	}
 
+	bool		m_isEnabled;
 	Transform	m_transform;
 	float4x4	m_world = MathHelper::Identity4x4();
 	float3		m_color;
+	float		m_roughness;
+	float		m_metalness;
 	std::shared_ptr<Mesh> m_mesh;
 };

@@ -221,10 +221,6 @@ float Gizmo::ClosestDistanceBetweenLineAndCircle(const Ray& line, const Circle& 
 	XMVECTOR pPoint = XMLoadFloat3(&plane.m_point);
 	XMVECTOR pNormal = XMLoadFloat3(&plane.m_normal);
 
-	//float d = XMVector3Dot(pPoint, -pNormal).m128_f32[0];
-	//float t = -(d + lOrigin.m128_f32[2] * pNormal.m128_f32[2] + lOrigin.m128_f32[1] * pNormal.m128_f32[1] + lOrigin.m128_f32[0] * pNormal.m128_f32[0]) /
-	//	lDir.m128_f32[2] * pNormal.m128_f32[2] + lDir.m128_f32[1] * pNormal.m128_f32[1] + lDir.m128_f32[0] * pNormal.m128_f32[0];
-
 	float d = XMVector3Dot(pNormal, lDir).m128_f32[0];
 	float t = 0.0f;
 	if (std::abs(d) > FLT_MIN)
@@ -239,6 +235,21 @@ float Gizmo::ClosestDistanceBetweenLineAndCircle(const Ray& line, const Circle& 
 			XMStoreFloat3(&p, onCircle);
 
 			return XMVector3Length(onPlane - onCircle).m128_f32[0];
+		}
+		else
+		{
+			XMVECTOR a = lOrigin - pPoint;
+			XMVECTOR b = pNormal;
+			float bNorm = XMVector3Length(b).m128_f32[0];
+			XMVECTOR rej = a - b * XMVector3Dot(a, b) / bNorm * bNorm;
+
+			XMVECTOR onCircle = circle.m_radius * XMVector3Normalize(rej);
+
+			XMStoreFloat3(&p, onCircle);
+
+			XMVECTOR u = onCircle - lOrigin;
+			XMVECTOR uv = XMVector3Cross(u, lDir);
+			return std::sqrt(XMVector3Dot(uv, uv).m128_f32[0] / XMVector3Dot(lDir, lDir).m128_f32[0]);
 		}
 	}
 
@@ -482,9 +493,8 @@ void Gizmo::EditTransform(int mouseX, int mouseY, int width, int height, const C
 			XMVECTOR xPpPc = XMVector3Cross(pP, pC);
 
 			float dot = XMVector3Dot(pP, pC).m128_f32[0];
-			dot = MathHelper::Clamp(dot, -1.0f, 1.0f);
+			dot = MathHelper::Clamp(dot, -0.99f, 0.99f);
 			float angle = std::acosf(dot) / 10.0f;
-			if (std::isnan(angle)) angle = 0.0f;
 
 			if (GetAxis(eAxis::X).IsActive())
 			{

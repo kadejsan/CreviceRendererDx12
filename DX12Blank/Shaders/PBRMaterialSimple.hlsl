@@ -34,7 +34,7 @@ VertexOut vs_main(VertexIn vin)
 	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
 	vout.Pos = mul(float4(vin.PosL, 1.0f), gWorld).xyz;
 	vout.TexCoord = float2(vin.Tex.x, 1.0f - vin.Tex.y);
-	vout.Normal = vin.Normal;
+	vout.Normal = mul(float4(vin.Normal, 0.0f), gWorld).xyz;
 
 	return vout;
 }

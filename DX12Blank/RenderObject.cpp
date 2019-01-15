@@ -2,7 +2,10 @@
 #include "RenderObject.h"
 
 RenderObject::RenderObject()
-	: m_mesh(nullptr)
+	: m_isEnabled(true)
+	, m_mesh(nullptr)
+	, m_roughness(0.5f)
+	, m_metalness(0.5f)
 {
 
 }
