@@ -31,6 +31,8 @@ PixelShaderInput vs_main(uint vertexID : SV_VertexID)
 
 #ifdef PIXEL_SHADER
 
+#include "Common.hlsl"
+
 TextureCube EnvironmentMap : register(t0);
 Texture2D<float> Depth	   : register(t1);
 SamplerState Sampler	   : register(s0);
@@ -38,20 +40,11 @@ SamplerState Sampler	   : register(s0);
 cbuffer cbPerObject : register(b0)
 {
 	float4x4	gScreenToWorld;
+	float4x4	gViewProj;
+	float4x4	gLightViewProj;
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
 };
-
-
-float3 PositionFromDepth(in float depth, in float2 pixelCoord, float aspectRatio, float4x4 customScreenToWorld)
-{
-	float2 cpos = (pixelCoord + 0.5f) * aspectRatio;
-	cpos *= 2.0f;
-	cpos -= 1.0f;
-	cpos.y *= -1.0f;
-	float4 positionWS = mul(float4(cpos, depth, 1.0f), customScreenToWorld);
-	return positionWS.xyz / positionWS.w;
-}
 
 float IsSky(float depth)
 {

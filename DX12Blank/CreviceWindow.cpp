@@ -66,6 +66,29 @@ void CreviceWindow::OnRender()
 
 	{
 		{
+			ScopedTimer perf("Rendering Shadowmap", Renderer::GGraphicsDevice);
+
+			GetRenderer().SetShadowMapDepth();
+			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepthShadow));
+
+			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
+
+			int i = st_objectsOffset;
+			GlobalLightCamera lightCamera(m_globalLight.GetSunDirection(UIContext::Time));
+			const Frustum& frustum = lightCamera.m_frustum;
+			for (auto o : m_renderObjects)
+			{
+				//Update buffer
+				if (o.IsEnabled() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
+				{
+					// TODO: light view matrix, ortho projection matrix
+					UpdateObjectConstantBufferShadows(o, lightCamera);
+					o.m_mesh->Draw(GetDevice());
+				}
+			}
+		}
+
+		{
 			ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
 			GetRenderer().SetGBuffer(true);
@@ -213,7 +236,7 @@ void CreviceWindow::OnRender()
 					m_gizmo.SetScale(d / 15.0f);
 					m_gizmo.SetTransform(ro.GetTransform());
 
-					GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepth));
+					GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::SimpleDepthSelection));
 					UpdateObjectConstantBuffer(ro, 0);
 					ro.m_mesh->Draw(GetDevice());
 				}
@@ -323,24 +346,27 @@ void CreviceWindow::UpdateHDRSkybox()
 		std::string name;
 		switch (UIContext::HDRSkybox)
 		{
+		case 0:
+			name = "black.dds";
+			break;
 		case 1:
-			name = "environment";
+			name = "environment.hdr";
 			break;
 		case 2:
-			name = "rooftop";
+			name = "rooftop.hdr";
 			break;
 		case 3:
-			name = "cape_hill";
+			name = "cape_hill.hdr";
 			break;
 		case 4:
-			name = "venice_sunset";
+			name = "venice_sunset.hdr";
 			break;
 		case 5:
-			name = "newport_loft";
+			name = "newport_loft.hdr";
 			break;
 		}
 
-		if(UIContext::HDRSkybox > 0) 
+		if(UIContext::HDRSkybox >= 0) 
 			GetRenderer().InitializeIBLTextures(name);
 		m_skyboxID = UIContext::HDRSkybox;
 	}
@@ -401,15 +427,19 @@ void CreviceWindow::InitializeRenderObjects()
 	m_gizmo.Initialize();
 
 	// Scene
-	AddObject(eObject::Plane, 20.0f, 20.0f, 10, 10);
+	AddObject(eObject::Box, 20.0f, 1.0f, 20.0f, 1);
+	m_renderObjects[0].SetTranslation(0.0f, -0.5f, 0.0f);
 	AddObject(eObject::Sphere, 1.0f, 16, 16);
 	m_renderObjects[1].SetTranslation(-5, 1, 0);
 	AddObject(eObject::Box, 2.0f, 2.0f, 2.0f, 1);
 	m_renderObjects[2].SetTranslation(-2, 1, 0);
+	m_renderObjects[2].SetColor(1, 0, 0);
 	AddObject(eObject::Cone, 1.0f, 3.0f, 8.0f, 8.0f);
 	m_renderObjects[3].SetTranslation(1, 1.5f, 0);
+	m_renderObjects[3].SetColor(0, 1, 0);
 	AddObject(eObject::Cylinder, 1.0f, 3.0f, 8.0f, 8.0f);
 	m_renderObjects[4].SetTranslation(4, 1.5f, 0);
+	m_renderObjects[4].SetColor(0, 0, 1);
 }
 
 void CreviceWindow::InitializeTextures()
@@ -513,26 +543,20 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 	{
 		const Camera* cam = GetCamera();
 
-		static Light lights[MaxLights] = {
-			{ float3(0, 0, -1), 1.0f },
-		{ float3(1, 0, 0), 1.0f },
-		{ float3(0, -1, 0), 1.0f }
-		};
-		static UINT lightsCount = 0;
-
 		XMVECTOR eyePos = XMLoadFloat3(&cam->m_eyePos);
 
 		ShadingConstants shadingCB;
 		ZeroMemory(&shadingCB, sizeof(shadingCB));
 		XMStoreFloat4(&shadingCB.EyePosition, eyePos);
 
-		for (UINT i = 0; i < lightsCount; ++i)
-		{
-			XMVECTOR lightDirV = XMLoadFloat3(&lights[i].LightDirection);
-			XMStoreFloat3(&shadingCB.Lights[i].LightDirection, lightDirV);
-			shadingCB.Lights[i].LightRadiance = lights[i].LightRadiance;
-		}
-		shadingCB.LightsCount = lightsCount;
+		Light globalLight;
+		float3 sunDir = m_globalLight.GetSunDirection(UIContext::Time);
+		globalLight.Direction = float4(sunDir.x, sunDir.y, sunDir.z, 0.0f);
+		shadingCB.GlobalLight.Direction = globalLight.Direction;
+		float3 sunColor = UIContext::LightColor;
+		globalLight.Color = float4(sunColor.x * UIContext::LightIntensity, sunColor.y * UIContext::LightIntensity, sunColor.z * UIContext::LightIntensity, 1.0f);
+		shadingCB.GlobalLight.Color = globalLight.Color;
+		
 		shadingCB.MousePos = float2((float)m_lastMousePos.x, (float)m_lastMousePos.y);
 
 		GetDevice().UpdateBuffer(m_shadingCB, &shadingCB, sizeof(ShadingConstants));
@@ -543,18 +567,33 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 		BackgroundConstants backgroundCB;
 		ZeroMemory(&backgroundCB, sizeof(backgroundCB));
 
-		const Camera* cam = GetCamera();
+		{
+			const Camera* cam = GetCamera();
 
-		XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
-		XMMATRIX proj = XMLoadFloat4x4(&cam->m_proj);
-		XMMATRIX worldToScreen = view * proj;
-		XMMATRIX screenToWorld = XMMatrixInverse(&XMMatrixDeterminant(worldToScreen), worldToScreen);
-		XMStoreFloat4x4(&backgroundCB.ScreenToWorld, XMMatrixTranspose(screenToWorld));
+			XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
+			XMMATRIX proj = XMLoadFloat4x4(&cam->m_proj);
+			XMMATRIX worldToScreen = view * proj;
+			XMMATRIX screenToWorld = XMMatrixInverse(&XMMatrixDeterminant(worldToScreen), worldToScreen);
+			XMStoreFloat4x4(&backgroundCB.ScreenToWorld, XMMatrixTranspose(screenToWorld));
+			XMStoreFloat4x4(&backgroundCB.ViewProj, XMMatrixTranspose(worldToScreen));
 
-		XMMATRIX cubeRotation = XMMatrixRotationRollPitchYaw(0.f, MathHelper::Deg2Rad((float)UIContext::CubemapRotation), 0.f);
-		XMStoreFloat4x4(&backgroundCB.CubemapRotation, XMMatrixTranspose(cubeRotation));
+			backgroundCB.ScreenDimensions = float4((float)GetWidth(), (float)GetHeight(), tanf(0.5f * MathHelper::Deg2Rad(cam->m_fov)), (float)GetHeight() / (float)GetWidth());
+		}
 
-		backgroundCB.ScreenDimensions = float4((float)GetWidth(), (float)GetHeight(), tanf(0.5f * MathHelper::Deg2Rad(cam->m_fov)), (float)GetHeight() / (float)GetWidth());
+		{
+			GlobalLightCamera lightCamera(m_globalLight.GetSunDirection(UIContext::Time));
+
+			XMMATRIX view = lightCamera.m_view;
+			XMMATRIX proj = lightCamera.m_proj;
+
+			XMMATRIX lightViewProj = view * proj;
+			XMStoreFloat4x4(&backgroundCB.LightViewProj, XMMatrixTranspose(lightViewProj));
+		}
+
+		{
+			XMMATRIX cubeRotation = XMMatrixRotationRollPitchYaw(0.f, MathHelper::Deg2Rad((float)UIContext::CubemapRotation), 0.f);
+			XMStoreFloat4x4(&backgroundCB.CubemapRotation, XMMatrixTranspose(cubeRotation));
+		}
 
 		GetDevice().UpdateBuffer(m_backgroundCB, &backgroundCB, sizeof(BackgroundConstants));
 	}
@@ -592,6 +631,26 @@ void CreviceWindow::UpdateObjectConstantBuffer(const RenderObject& renderObject,
 		objCB.ObjectID = objectID;
 
 		GetDevice().UpdateBuffer(m_objPsCB, &objCB, sizeof(ObjectConstantsPS));
+	}
+}
+
+void CreviceWindow::UpdateObjectConstantBufferShadows(const RenderObject& renderObject, const GlobalLightCamera& lightCamera)
+{
+	if (m_objVsCB != nullptr)
+	{
+		const Camera* cam = GetCamera();
+
+		XMMATRIX world = XMLoadFloat4x4(&renderObject.GetWorld());
+
+		XMMATRIX worldViewProj = world * lightCamera.m_view * lightCamera.m_proj;
+
+		ObjectConstantsVS objCB;
+		ZeroMemory(&objCB, sizeof(objCB));
+		// Update constant buffer with the latest worldViewProj matrix
+		XMStoreFloat4x4(&objCB.World, XMMatrixTranspose(world));
+		XMStoreFloat4x4(&objCB.Scene, XMMatrixTranspose(lightCamera.m_view));
+		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
+		GetDevice().UpdateBuffer(m_objVsCB, &objCB, sizeof(ObjectConstantsVS));
 	}
 }
 

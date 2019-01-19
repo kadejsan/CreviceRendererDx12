@@ -20,6 +20,10 @@ public:
 	static int HDRSkybox;
 	static int PBRModel;
 
+	static float Time;
+	static float LightIntensity;
+	static float3 LightColor;
+
 	static int CubemapRotation;
 
 	static int FOV;

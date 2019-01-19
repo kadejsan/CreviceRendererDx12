@@ -34,6 +34,9 @@
     <Filter Include="Engine\Lib\imgui">
       <UniqueIdentifier>{076ceaa5-d3c4-471c-9f1f-daa1dc476098}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Lighting">
+      <UniqueIdentifier>{a67fa749-e4ab-4e1a-9c71-98fcccf73deb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -174,6 +177,12 @@
     <ClInclude Include="Gizmo.h">
       <Filter>Engine\Mesh</Filter>
     </ClInclude>
+    <ClInclude Include="GlobalLightTrajectory.h">
+      <Filter>Engine\Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalLightCamera.h">
+      <Filter>Engine\Lighting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -281,6 +290,12 @@
     <ClCompile Include="Gizmo.cpp">
       <Filter>Engine\Mesh</Filter>
     </ClCompile>
+    <ClCompile Include="GlobalLightTrajectory.cpp">
+      <Filter>Engine\Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="GlobalLightCamera.cpp">
+      <Filter>Engine\Lighting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -336,6 +351,9 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\SimpleColor.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\Common.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

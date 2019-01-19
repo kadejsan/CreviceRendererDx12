@@ -36,25 +36,26 @@ PixelShaderInput vs_main(uint vertexID : SV_VertexID)
 
 #ifdef PIXEL_SHADER
 
-static const uint MaxLights = 3;
+#include "Common.hlsl"
 
 struct Light
 {
-	float3   LightDirection;
-	float    LightRadiance;
+	float4   Direction;
+	float4   Color;
 };
 
 cbuffer cbPerObject : register(b0)
 {
 	float4	 gEyePosition;
-	Light	 gLights[MaxLights];
-	uint	 gNumLights;
+	Light	 gLight;
 	float2	 gMousePos;
 };
 
 cbuffer cbPerObject : register(b1)
 {
 	float4x4	gScreenToWorld;
+	float4x4	gViewProj;
+	float4x4	gLightViewProj;
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
 };
@@ -67,6 +68,8 @@ Texture2D<float>	Depth			: register(t3);
 TextureCube			SpecularMap		 : register(t4);
 TextureCube			IrradianceMap    : register(t5);
 Texture2D			SpecularBRDF_LUT : register(t6);
+
+Texture2D<float>	ShadowMap		 : register(t7);
 
 RWBuffer<int>		HitProxy		 : register(u0);
 
@@ -112,24 +115,35 @@ uint querySpecularTextureLevels()
 	return levels;
 }
 
-float4 GammaToLinear(float4 c)
-{
-	return float4(pow(c.rgb, 2.2f), c.a);
-}
-
-float3 PositionFromDepth(in float depth, in float2 pixelCoord, float aspectRatio, float4x4 customScreenToWorld)
-{
-	float2 cpos = (pixelCoord + 0.5f) * aspectRatio;
-	cpos *= 2.0f;
-	cpos -= 1.0f;
-	cpos.y *= -1.0f;
-	float4 positionWS = mul(float4(cpos, depth, 1.0f), customScreenToWorld);
-	return positionWS.xyz / positionWS.w;
-}
-
 float IsSky(float depth)
 {
 	return depth < 1.0f;
+}
+
+float GetShadow(float3 posWS)
+{
+	float4 lpos = mul(float4(posWS, 1), gLightViewProj);
+
+	//re-homogenize position after interpolation
+	lpos.xyz /= lpos.w;
+
+	//if position is not visible to the light - dont illuminate it
+	//results in hard light frustum
+	if (lpos.x < -1.0f || lpos.x > 1.0f ||
+		lpos.y < -1.0f || lpos.y > 1.0f ||
+		lpos.z < 0.0f  || lpos.z > 1.0f) return 1.0f;
+
+	//transform clip space coords to texture space coords (-1:1 to 0:1)
+	lpos.x = lpos.x / 2.0f + 0.5f;
+	lpos.y = -lpos.y / 2.0f + 0.5f;
+
+	//sample shadow map - point sampler
+	float shadowMapDepth = ShadowMap.Sample(Sampler, lpos.xy).r;
+
+	const float bias = 0.001f;
+	if (shadowMapDepth < lpos.z - bias) return 0.0f;
+
+	return 1.0f;
 }
 
 float4 ps_main(PixelShaderInput pin) : SV_Target
@@ -148,16 +162,17 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	// is sky
 	if (!IsSky(depth)) discard;
 
+	float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
 	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));
 	float roughness = rm.x;
 	float metalness = rm.y;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
-	float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
+	//float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
 	float3 Lo = normalize(gEyePosition.xyz - posWS);
+	float shadow = GetShadow(posWS);
 
 	// Get current pixel's normal and transform to world space.
-
 	float3 N = normalize(2.0 * GBuffer1.Sample(Sampler, pixelCoord).rgb - 1.0);
 
 	// Angle between surface normal and outgoing light direction.
@@ -170,10 +185,9 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	float3 F0 = lerp(Fdielectric.xxx, albedo.xyz, metalness);
 
 	float3 directLighting = 0.0f;
-	for(uint i = 0; i < gNumLights; ++i)
 	{
-		float3 Li = -gLights[i].LightDirection;
-		float3 Lradiance = gLights[i].LightRadiance;
+		float3 Li = -gLight.Direction.xyz;
+		float3 Lradiance = gLight.Color.rgb;
 
 		// Half-vector between Li and Lo.
 		float3 Lh = normalize(Li + Lo);
@@ -203,7 +217,7 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 		float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0 * cosLi * cosLo);
 
 		// Total contribution for this light.
-		directLighting += (diffuseBRDF + specularBRDF) * Lradiance * cosLi;
+		directLighting += (diffuseBRDF + specularBRDF) * Lradiance * cosLi * shadow;
 	}
 
 	float3 ambientLighting = 0.0f;
@@ -234,7 +248,7 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 		float3 specularIBL = (F0 * specularBRDF.x + specularBRDF.y) * specularIrradiance;
 
 		// Total ambient lighting contribution.
-		ambientLighting = diffuseIBL + specularIBL;
+		ambientLighting = (diffuseIBL + specularIBL);
 	}
 
 	// Final pixel color.

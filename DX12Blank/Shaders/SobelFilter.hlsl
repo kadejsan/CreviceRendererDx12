@@ -37,6 +37,8 @@ SamplerState Sampler	   : register(s0);
 cbuffer cbPerObject : register(b0)
 {
 	float4x4	gScreenToWorld;
+	float4x4	gViewProj;
+	float4x4	gLightViewProj;
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
 };

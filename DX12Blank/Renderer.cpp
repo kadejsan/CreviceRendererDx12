@@ -41,9 +41,11 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		m_selectionTexture.Initialize(window->GetWidth(), window->GetHeight());
 		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight(), 1U, 0.0f, 0);
 
+		m_shadowMap.Initialize(DSShadowMap_Resolution, DSShadowMap_Resolution, 1U, 1.0f, 0);
+
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
-		InitializeIBLTextures("environment");
+		InitializeIBLTextures("environment.hdr");
 		InitializeHitProxyBuffers();
 		TextRenderer::Font::Initialize(window->GetWidth(), window->GetHeight());
 	}
@@ -132,7 +134,7 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 
 		// Load & convert equirectangular environment map to cubemap texture
 		{
-			GGraphicsDevice->CreateTextureFromFile("Data/Environments/" + name + ".hdr", &m_envTextureEquirect, false);
+			GGraphicsDevice->CreateTextureFromFile("Data/Environments/" + name, &m_envTextureEquirect, false);
 
 			GGraphicsDevice->BindComputePSO(m_psoCache.GetPSO(Equirect2Cube));
 
@@ -247,6 +249,11 @@ void Renderer::BindEnvTexture(SHADERSTAGE stage, int slot)
 	GGraphicsDevice->BindResource(stage, m_envTexture, slot);
 }
 
+void Renderer::BindShadowMap()
+{
+	GGraphicsDevice->BindResource(PS, m_shadowMap.GetTexture(), 7);
+}
+
 void Renderer::EdgeDetection()
 {
 	m_selectionTexture.Activate();
@@ -263,6 +270,7 @@ void Renderer::EdgeDetection()
 void Renderer::RenderLighting()
 {
 	BindGBuffer();
+	BindShadowMap();
 
 	GGraphicsDevice->BindUnorderedAccessResource(PS, m_hitProxy, 0);
 

@@ -10,6 +10,8 @@
 #include "Gizmo.h"
 #include "Renderer.h"
 #include "RenderTarget.h"
+#include "GlobalLightTrajectory.h"
+#include "GlobalLightCamera.h"
 
 class CubeMesh;
 class Material;
@@ -56,6 +58,8 @@ private:
 	int							m_skyboxID;
 	RenderObject				m_skybox;
 
+	GlobalLightTrajectory		m_globalLight;
+
 	// Temporary: objects list rendering
 	// #TODO: Scene graph
 	std::vector<RenderObject>		m_renderObjects;
@@ -65,6 +69,7 @@ private:
 	void InitializeConstantBuffers();
 	void UpdateGlobalConstantBuffer();
 	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id = -1);
+	void UpdateObjectConstantBufferShadows(const RenderObject& renderObject, const GlobalLightCamera& lightCamera);
 
 	struct ObjectConstantsVS
 	{
@@ -83,17 +88,15 @@ private:
 	};
 	GPUBuffer*		m_objPsCB;
 
-	static const int MaxLights = 3;
 	struct Light
 	{
-		float3 LightDirection;
-		float  LightRadiance;
+		float4 Direction;
+		float4 Color;
 	};
 	struct ShadingConstants
 	{
 		float4 EyePosition = float4(0, 0, 0, 0);
-		Light  Lights[MaxLights];
-		UINT   LightsCount;
+		Light  GlobalLight;
 		float2 MousePos;
 	};
 	GPUBuffer*		m_shadingCB;
@@ -101,6 +104,8 @@ private:
 	struct BackgroundConstants
 	{
 		float4x4 ScreenToWorld = MathHelper::Identity4x4();
+		float4x4 ViewProj = MathHelper::Identity4x4();
+		float4x4 LightViewProj = MathHelper::Identity4x4();
 		float4x4 CubemapRotation = MathHelper::Identity4x4();
 		float4   ScreenDimensions;
 	};

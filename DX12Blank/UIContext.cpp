@@ -11,6 +11,10 @@ bool UIContext::DebugGrid = true;
 int UIContext::HDRSkybox = 1;
 int UIContext::PBRModel = 0;
 
+float UIContext::Time = 12.0f;
+float UIContext::LightIntensity = 1.0f;
+float3 UIContext::LightColor = float3(1, 1, 1);
+
 int UIContext::CubemapRotation = 0;
 
 int UIContext::FOV = 60;
@@ -215,10 +219,22 @@ void UIContext::ShowSceneSettings()
 		ImGui::Checkbox("Wireframe", &Wireframe);
 		ImGui::Checkbox("Grid", &DebugGrid);
 
+		ImGui::Separator();
+
 		const char* skyboxes[] = { "Black", "Street", "Rooftop", "Cape Hill", "Venice Sunset", "Newport Loft" };
 		ImGui::Combo("HDR Skybox", &HDRSkybox, skyboxes, IM_ARRAYSIZE(skyboxes));
 
+		ImGui::Separator();
+
+		ImGui::SliderFloat("Time", &Time, 0.0f, 24.0f);
+		ImGui::SliderFloat("Light Intensity", &LightIntensity, 0.0f, 100.0f);
+		ImGui::ColorEdit3("Light Color", &LightColor.x);
+
+		ImGui::Separator();
+
 		ImGui::SliderInt("Skybox Rotation", &CubemapRotation, 0, 360);
+
+		ImGui::Separator();
 
 		const char* models[] = { "Sphere", "Cerberus" };
 		ImGui::Combo("PBR Models", &PBRModel, models, IM_ARRAYSIZE(models));

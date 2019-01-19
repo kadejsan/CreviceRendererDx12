@@ -59,6 +59,21 @@ public:
 		SetWorld();
 	}
 
+	inline void SetColor(float r, float g, float b)
+	{
+		m_color = float3(r, g, b);
+	}
+
+	inline void SetRoughness(float r)
+	{
+		m_roughness = r;
+	}
+
+	inline void SetMetalness(float m)
+	{
+		m_metalness = m;
+	}
+
 	inline void SetWorld()
 	{
 		XMMATRIX scale = XMMatrixScaling(m_transform.m_scale.x, m_transform.m_scale.y, m_transform.m_scale.z);

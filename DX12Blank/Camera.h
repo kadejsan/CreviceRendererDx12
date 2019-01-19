@@ -107,12 +107,12 @@ public:
 	virtual void Update() override;
 	virtual CameraType GetType() const { return Free; }
 
+	static const XMVECTOR DEFAULT_RIGHT;
+	static const XMVECTOR DEFAULT_FORWARD;
+
 private:
 	XMVECTOR m_position;
 	XMVECTOR m_target;
-
-	static const XMVECTOR DEFAULT_RIGHT;
-	static const XMVECTOR DEFAULT_FORWARD;
 
 	float m_angleX;
 	float m_angleY;

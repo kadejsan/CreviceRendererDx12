@@ -109,8 +109,12 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.DSS->m_desc.DepthEnable = true;
 	psoDesc.RS->m_desc.FillMode = FILL_SOLID;
 	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_GREATER;
-	m_cacheGraphics[SimpleDepth] = std::make_unique<GraphicsPSO>();
-	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleDepth].get());
+	m_cacheGraphics[SimpleDepthSelection] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleDepthSelection].get());
+
+	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_LESS;
+	m_cacheGraphics[SimpleDepthShadow] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SimpleDepthShadow].get());
 
 	// Skybox
 	psoDesc.VS = new VertexShader();

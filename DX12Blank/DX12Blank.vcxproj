@@ -22,7 +22,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{7782939A-DC99-49A3-9328-5EAC28F7AA93}</ProjectGuid>
     <RootNamespace>DX12Blank</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -138,6 +138,8 @@
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="EngineTimer.h" />
     <ClInclude Include="Gizmo.h" />
+    <ClInclude Include="GlobalLightCamera.h" />
+    <ClInclude Include="GlobalLightTrajectory.h" />
     <ClInclude Include="GraphicsAPI.h" />
     <ClInclude Include="GraphicsDevice_DX12.h" />
     <ClInclude Include="DXHelper.h" />
@@ -185,6 +187,8 @@
     <ClCompile Include="D3DUtils.cpp" />
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="Gizmo.cpp" />
+    <ClCompile Include="GlobalLightCamera.cpp" />
+    <ClCompile Include="GlobalLightTrajectory.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
     <ClCompile Include="Grid.cpp" />
@@ -292,6 +296,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SimpleColor.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Common.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

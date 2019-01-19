@@ -12,7 +12,8 @@ enum eGPSO
 {
 	GridSolid,
 	GizmoSolid,
-	SimpleDepth,
+	SimpleDepthSelection,
+	SimpleDepthShadow,
 	PBRSimpleSolid,
 	PBRSimpleWireframe,
 	PBRSolid,

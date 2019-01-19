@@ -26,6 +26,7 @@ public:
 	inline void SetGBuffer(bool set = true) { set ? m_gbuffer.Activate() : m_gbuffer.Deactivate(); }
 	inline void SetFrameBuffer(bool set = true) { set ? m_frameBuffer.Activate() : m_frameBuffer.Deactivate(); }
 	inline void SetSelectionDepth() { m_selectionDepth.Clear(0.0f); GetDevice()->BindRenderTargets(0, nullptr, m_selectionDepth.GetTexture()); }
+	inline void SetShadowMapDepth() { m_shadowMap.Clear(1.0f); m_shadowMap.Set(); GetDevice()->BindRenderTargets(0, nullptr, m_shadowMap.GetTexture()); }
 
 	void InitializeHitProxyBuffers();
 	void InitializeIBLTextures(const std::string& name);
@@ -33,6 +34,7 @@ public:
 	void BindIBL();
 	void BindGBuffer();
 	void BindEnvTexture(SHADERSTAGE stage, int slot);
+	void BindShadowMap();
 
 	void EdgeDetection();
 	void RenderLighting();
@@ -63,10 +65,14 @@ private:
 	};
 	GPUBuffer*					  m_specularMapFilterCB;
 	
+	// Selection
 	GPUBuffer*					  m_hitProxy;
 	GPUReadbackBuffer*			  m_hitProxyReadback;
 	RenderTarget				  m_selectionTexture;
 	DepthTarget					  m_selectionDepth;
+
+	// Shadow map
+	DepthTarget					  m_shadowMap;
 
 public:
 	static const Graphics::FORMAT RTFormat_LDR = Graphics::FORMAT_R8G8B8A8_UNORM;
@@ -82,4 +88,5 @@ public:
 	static const Graphics::FORMAT RTFormat_GBuffer1 = Graphics::FORMAT_R10G10B10A2_UNORM;
 	static const Graphics::FORMAT RTFormat_GBuffer2 = Graphics::FORMAT_R16G16B16A16_FLOAT;
 
+	static const UINT DSShadowMap_Resolution = 1024;
 };

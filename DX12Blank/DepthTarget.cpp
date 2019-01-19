@@ -39,6 +39,18 @@ void DepthTarget::Initialize(int width, int height, UINT MSAAC, float clearDepth
 	depthDesc.ClearDepth = clearDepth;
 	depthDesc.ClearStencil = clearStencil;
 
+	m_viewport.Width = (FLOAT)width;
+	m_viewport.Height = (FLOAT)height;
+	m_viewport.MinDepth = 0.0f;
+	m_viewport.MaxDepth = 1.0f;
+	m_viewport.TopLeftX = 0;
+	m_viewport.TopLeftY = 0;
+
+	m_scissors.left = 0;
+	m_scissors.top = 0;
+	m_scissors.right = width;
+	m_scissors.bottom = height;
+
 	Renderer::GetDevice()->CreateTexture2D(depthDesc, nullptr, &m_texture);
 	Renderer::GetDevice()->TransitionBarrier(m_texture, RESOURCE_STATE_COMMON, RESOURCE_STATE_DEPTH_WRITE);
 
@@ -90,6 +102,12 @@ void DepthTarget::Clear(float clearDepth /*=1.0f*/, UINT8 clearStencil /*=0*/ )
 void DepthTarget::CopyFrom(const DepthTarget& from)
 {
 	Renderer::GetDevice()->CopyTexture(GetTexture(), from.GetTexture());
+}
+
+void DepthTarget::Set()
+{
+	Renderer::GetDevice()->BindViewports(1, &m_viewport);
+	Renderer::GetDevice()->SetScissorRects(1, &m_scissors);
 }
 
 Texture2D* DepthTarget::GetTextureResolvedMSAA()
