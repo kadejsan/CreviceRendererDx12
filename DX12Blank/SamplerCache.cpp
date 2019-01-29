@@ -50,4 +50,14 @@ void SamplerCache::Initialize(Graphics::GraphicsDevice& device)
 	samplerDesc.Filter = FILTER_ANISOTROPIC;
 	m_cache[AnisotropicWrap] = std::make_unique<Sampler>();
 	device.CreateSamplerState(&samplerDesc, m_cache[AnisotropicWrap].get());
+
+	samplerDesc.Filter = FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+	samplerDesc.AddressU = TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressV = TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressW = TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.MaxAnisotropy = 0;
+	samplerDesc.MaxLOD = 0.0f;
+	samplerDesc.ComparisonFunc = COMPARISON_LESS_EQUAL;
+	m_cache[ShadowMapClamp] = std::make_unique<Sampler>();
+	device.CreateSamplerState(&samplerDesc, m_cache[ShadowMapClamp].get());
 }

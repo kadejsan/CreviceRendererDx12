@@ -24,6 +24,8 @@ public:
 
 	inline bool IsEnabled() const { return m_isEnabled; }
 	inline void SetEnabled(bool enabled) { m_isEnabled = enabled; }
+	inline void SetCastsShadows(bool castsShadows) { m_castsShadows = castsShadows; }
+	inline bool CastsShadows() const { return m_castsShadows; }
 
 	inline float GetX() const { return m_transform.m_translation.x; }
 	inline float GetY() const { return m_transform.m_translation.y; }
@@ -90,6 +92,7 @@ public:
 	}
 
 	bool		m_isEnabled;
+	bool		m_castsShadows;
 	Transform	m_transform;
 	float4x4	m_world = MathHelper::Identity4x4();
 	float3		m_color;

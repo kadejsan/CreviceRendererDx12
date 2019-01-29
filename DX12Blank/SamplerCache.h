@@ -13,6 +13,7 @@ enum eSamplerState
 	LinearWrap,
 	AnisotropicClamp,
 	AnisotropicWrap,
+	ShadowMapClamp,
 
 	SS_MAX,
 };

@@ -276,6 +276,7 @@ void Renderer::RenderLighting()
 
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LightingPass));
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::ShadowMapClamp), 2);
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 }
 

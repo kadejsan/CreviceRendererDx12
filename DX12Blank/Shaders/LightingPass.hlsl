@@ -73,8 +73,9 @@ Texture2D<float>	ShadowMap		 : register(t7);
 
 RWBuffer<int>		HitProxy		 : register(u0);
 
-SamplerState		Sampler		  : register(s0);
-SamplerState		spBRDFSampler : register(s1);
+SamplerState			Sampler			 : register(s0);
+SamplerState			spBRDFSampler	 : register(s1);
+SamplerComparisonState	ShadowMapSampler : register(s2);
 
 // GGX/Towbridge-Reitz normal distribution function.
 // Uses Disney's reparametrization of alpha = roughness^2.
@@ -120,6 +121,11 @@ float IsSky(float depth)
 	return depth < 1.0f;
 }
 
+float2 TexOffset(int u, int v)
+{
+	return float2(u * 1.0f / 1024.0f, v * 1.0f / 1024.0f);
+}
+
 float GetShadow(float3 posWS)
 {
 	float4 lpos = mul(float4(posWS, 1), gLightViewProj);
@@ -137,13 +143,48 @@ float GetShadow(float3 posWS)
 	lpos.x = lpos.x / 2.0f + 0.5f;
 	lpos.y = -lpos.y / 2.0f + 0.5f;
 
-	//sample shadow map - point sampler
-	float shadowMapDepth = ShadowMap.Sample(Sampler, lpos.xy).r;
-
 	const float bias = 0.001f;
-	if (shadowMapDepth < lpos.z - bias) return 0.0f;
+	lpos.z -= bias;
 
-	return 1.0f;
+#if 0
+	//PCF sampling for shadow map
+	float sum = 0;
+	float x, y;
+	float samples = 0.0f;
+	const float range = 2.5f;
+
+	// perform PCF filtering on a n x n texel neighborhood
+	for (y = -range; y <= range; y += 1.0)
+	{
+		for (x = -range; x <= range; x += 1.0)
+		{
+			sum += ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + TexOffset(x, y), lpos.z);
+			samples++;
+		}
+	}
+	float shadowFactor = sum / samples;
+#else
+	const float dilation = 2.0;
+	const float shadowTexelSize = 1.0f / 1024.0f;
+	float d1 = dilation * shadowTexelSize * 0.125;
+	float d2 = dilation * shadowTexelSize * 0.875;
+	float d3 = dilation * shadowTexelSize * 0.625;
+	float d4 = dilation * shadowTexelSize * 0.375;
+	float result = (
+		2.0 * ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy, lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d2, d1),  lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d1, -d2), lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d2, -d1),  lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d1, d2),   lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d4, d3),  lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d3, -d4), lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d4, -d3),  lpos.z) +
+			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d3, d4),   lpos.z)
+		) / 10.0;
+	float shadowFactor = result * result;
+#endif
+
+	return shadowFactor;
 }
 
 float4 ps_main(PixelShaderInput pin) : SV_Target

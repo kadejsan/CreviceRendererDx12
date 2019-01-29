@@ -79,7 +79,7 @@ void CreviceWindow::OnRender()
 			for (auto o : m_renderObjects)
 			{
 				//Update buffer
-				if (o.IsEnabled() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
+				if (o.IsEnabled() && o.CastsShadows() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
 				{
 					// TODO: light view matrix, ortho projection matrix
 					UpdateObjectConstantBufferShadows(o, lightCamera);
@@ -429,6 +429,7 @@ void CreviceWindow::InitializeRenderObjects()
 	// Scene
 	AddObject(eObject::Box, 20.0f, 1.0f, 20.0f, 1);
 	m_renderObjects[0].SetTranslation(0.0f, -0.5f, 0.0f);
+	m_renderObjects[0].SetCastsShadows(false);
 	AddObject(eObject::Sphere, 1.0f, 16, 16);
 	m_renderObjects[1].SetTranslation(-5, 1, 0);
 	AddObject(eObject::Box, 2.0f, 2.0f, 2.0f, 1);
