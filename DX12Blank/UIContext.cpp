@@ -18,8 +18,14 @@ float3 UIContext::LightColor = float3(1, 1, 1);
 int UIContext::CubemapRotation = 0;
 
 int UIContext::FOV = 60;
-float UIContext::Near = 1.0f;
-float UIContext::Far = 1000.0f;
+float UIContext::Near = 0.1f;
+float UIContext::Far = 800.0f;
+
+bool UIContext::EnableSSAO = true;
+float UIContext::OcclusionRadius = 0.26f;
+float UIContext::OcclusionPower = 8.0f;
+float UIContext::OcclusionFalloff = -0.4f;
+float UIContext::OcclusionDarkness = 1.0f;
 
 static bool showSceneSettings = true;
 static bool showCameraSettings = false;
@@ -249,6 +255,14 @@ void UIContext::ShowCameraSettings()
 		ImGui::SliderInt("FOV", &FOV, 30, 90);
 		ImGui::SliderFloat("Near", &Near, 0.01f, 1.0f);
 		ImGui::SliderFloat("Far", &Far, 100.0f, 4000.0f);
+
+		ImGui::Separator();
+
+		ImGui::Checkbox("Enable SSAO", &EnableSSAO);
+		ImGui::SliderFloat("AO Radius", &OcclusionRadius, 0.0f, 1.0f);
+		ImGui::SliderFloat("AO Strength", &OcclusionPower, 1.0f, 20.0f);
+		ImGui::SliderFloat("AO Falloff", &OcclusionFalloff, -1.0f, 1.0f);
+		ImGui::SliderFloat("AO Darkness", &OcclusionDarkness, 1.0f, 10.0f);
 	}
 	ImGui::End();
 }

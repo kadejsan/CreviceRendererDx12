@@ -58,6 +58,7 @@ cbuffer cbPerObject : register(b1)
 	float4x4	gLightViewProj;
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
+	float		gEnableSSAO;
 };
 
 Texture2D<float4>	GBuffer0		: register(t0);
@@ -70,6 +71,7 @@ TextureCube			IrradianceMap    : register(t5);
 Texture2D			SpecularBRDF_LUT : register(t6);
 
 Texture2D<float>	ShadowMap		 : register(t7);
+Texture2D<float4>	AmbientOcclusion : register(t8);
 
 RWBuffer<int>		HitProxy		 : register(u0);
 
@@ -137,7 +139,7 @@ float GetShadow(float3 posWS)
 	//results in hard light frustum
 	if (lpos.x < -1.0f || lpos.x > 1.0f ||
 		lpos.y < -1.0f || lpos.y > 1.0f ||
-		lpos.z < 0.0f  || lpos.z > 1.0f) return 1.0f;
+		lpos.z < 0.0f || lpos.z > 1.0f) return 1.0f;
 
 	//transform clip space coords to texture space coords (-1:1 to 0:1)
 	lpos.x = lpos.x / 2.0f + 0.5f;
@@ -164,6 +166,7 @@ float GetShadow(float3 posWS)
 	}
 	float shadowFactor = sum / samples;
 #else
+	// Cheaper (smarter) version
 	const float dilation = 2.0;
 	const float shadowTexelSize = 1.0f / 1024.0f;
 	float d1 = dilation * shadowTexelSize * 0.125;
@@ -172,14 +175,14 @@ float GetShadow(float3 posWS)
 	float d4 = dilation * shadowTexelSize * 0.375;
 	float result = (
 		2.0 * ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy, lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d2, d1),  lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d1, -d2), lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d2, -d1),  lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d1, d2),   lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d4, d3),  lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d3, -d4), lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d4, -d3),  lpos.z) +
-			  ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d3, d4),   lpos.z)
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d2, d1), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d1, -d2), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d2, -d1), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d1, d2), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d4, d3), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d3, -d4), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d4, -d3), lpos.z) +
+		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d3, d4), lpos.z)
 		) / 10.0;
 	float shadowFactor = result * result;
 #endif
@@ -207,9 +210,9 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));
 	float roughness = rm.x;
 	float metalness = rm.y;
+	float ao = gEnableSSAO == true ? AmbientOcclusion.SampleLevel(Sampler, pixelCoord, 0).r : 1.0f;
 
 	// Outgoing light direction (vector from world-space pixel position to the "eye").
-	//float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
 	float3 Lo = normalize(gEyePosition.xyz - posWS);
 	float shadow = GetShadow(posWS);
 
@@ -293,7 +296,7 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	}
 
 	// Final pixel color.
-	return float4(directLighting + ambientLighting, 1.0);
+	return float4(directLighting + ambientLighting * ao, 1.0);
 }
 
 #endif

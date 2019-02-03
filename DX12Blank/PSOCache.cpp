@@ -21,6 +21,13 @@ void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 	InitializeCompute(device);
 }
 
+
+void PSOCache::Clean()
+{
+	m_cacheGraphics.clear();
+	m_cacheCompute.clear();
+}
+
 void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 {
 	m_cacheGraphics.resize(GPSO_MAX);
@@ -151,6 +158,16 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	m_cacheGraphics[TonemappingReinhard] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[TonemappingReinhard].get());
 
+	// Linearize Depth
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\LinearizeDepth.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\LinearizeDepth.hlsl", psoDesc.PS);
+	psoDesc.RTFormats[0] = Renderer::RTFormat_LinearDepth;
+	m_cacheGraphics[LinearizeDepth] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[LinearizeDepth].get());
+
+	// Background
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();
 	device.CreateShader(L"Shaders\\Background.hlsl", psoDesc.VS);
@@ -177,6 +194,14 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	m_cacheGraphics[SobelFilter] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[SobelFilter].get());
 
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\AmbientOcclusion.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\AmbientOcclusion.hlsl", psoDesc.PS);
+	psoDesc.RTFormats[0] = Renderer::RTFormat_AO;
+	m_cacheGraphics[AmbientOcclusionPass] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[AmbientOcclusionPass].get());
+
 	// Simple Color
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();
@@ -200,6 +225,7 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	psoDesc.DSS->m_desc.DepthEnable = true;
 	psoDesc.DSS->m_desc.DepthFunc = COMPARISON_LESS;
 	psoDesc.DSFormat = Renderer::DSFormat_Full;
+	psoDesc.RS->m_desc.FrontCounterClockwise = true;
 	m_cacheGraphics[GizmoSolid] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[GizmoSolid].get());
 }

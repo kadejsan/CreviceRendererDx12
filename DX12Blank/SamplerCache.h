@@ -11,6 +11,7 @@ enum eSamplerState
 {
 	LinearClamp,
 	LinearWrap,
+	PointClamp,
 	AnisotropicClamp,
 	AnisotropicWrap,
 	ShadowMapClamp,

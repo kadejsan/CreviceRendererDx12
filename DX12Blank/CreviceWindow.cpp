@@ -142,6 +142,18 @@ void CreviceWindow::OnRender()
 			GetRenderer().SetGBuffer(false);
 		}
 
+		{
+			ScopedTimer perf("Linearize Depth", Renderer::GGraphicsDevice);
+
+			GetRenderer().LinearizeDepth(*m_camera);
+		}
+
+		{
+			ScopedTimer perf("Ambient Occlusion", Renderer::GGraphicsDevice);
+
+			GetRenderer().RenderAmbientOcclusion();
+		}
+
 		GetRenderer().SetFrameBuffer(true);
 
 		{
@@ -296,6 +308,10 @@ void CreviceWindow::OnKeyDown(UINT8 key)
 		else if (key == '3')
 		{
 			m_gizmo.SetType(Scaler);
+		}
+		else if (key == '0')
+		{
+			m_renderer->InitializePSO();
 		}
 	}
 }
@@ -579,6 +595,7 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 			XMStoreFloat4x4(&backgroundCB.ViewProj, XMMatrixTranspose(worldToScreen));
 
 			backgroundCB.ScreenDimensions = float4((float)GetWidth(), (float)GetHeight(), tanf(0.5f * MathHelper::Deg2Rad(cam->m_fov)), (float)GetHeight() / (float)GetWidth());
+			backgroundCB.EnableSSAO = UIContext::EnableSSAO;
 		}
 
 		{

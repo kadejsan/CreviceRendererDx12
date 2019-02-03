@@ -36,6 +36,10 @@ void SamplerCache::Initialize(Graphics::GraphicsDevice& device)
 	m_cache[LinearClamp] = std::make_unique<Sampler>();
 	device.CreateSamplerState(&samplerDesc, m_cache[LinearClamp].get());
 	
+	samplerDesc.Filter = FILTER_MIN_MAG_MIP_POINT;
+	m_cache[PointClamp] = std::make_unique<Sampler>();
+	device.CreateSamplerState(&samplerDesc, m_cache[PointClamp].get());
+
 	samplerDesc.Filter = FILTER_ANISOTROPIC;
 	m_cache[AnisotropicClamp] = std::make_unique<Sampler>();
 	device.CreateSamplerState(&samplerDesc, m_cache[AnisotropicClamp].get());

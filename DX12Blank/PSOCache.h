@@ -24,6 +24,8 @@ enum eGPSO
 	LightingPass,
 	Background,
 	SobelFilter,
+	LinearizeDepth,
+	AmbientOcclusionPass,
 
 	GPSO_MAX,
 };
@@ -45,7 +47,8 @@ public:
 	~PSOCache();
 
 	void Initialize( Graphics::GraphicsDevice& device );
-	
+	void Clean();
+
 	inline Graphics::GraphicsPSO* GetPSO(eGPSO pso) const { return m_cacheGraphics[pso].get(); }
 	inline Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_cacheCompute[pso].get(); }
 

@@ -41,6 +41,8 @@
 #include <comdef.h>
 #include <fstream>
 #include <sstream>
+#include <set>
+#include <iostream>
 
 #define LOG( str, ... ) { char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); OutputDebugString(buffer); }
 

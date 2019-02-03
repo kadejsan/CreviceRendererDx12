@@ -108,6 +108,7 @@ private:
 		float4x4 LightViewProj = MathHelper::Identity4x4();
 		float4x4 CubemapRotation = MathHelper::Identity4x4();
 		float4   ScreenDimensions;
+		float	 EnableSSAO;
 	};
 	GPUBuffer*		m_backgroundCB;
 

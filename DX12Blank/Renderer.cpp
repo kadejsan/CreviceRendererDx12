@@ -27,8 +27,8 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 	
 	GGraphicsDevice->Initialize(window);
 
-	m_psoCache.Initialize(*Renderer::GGraphicsDevice);
-	m_samplerCache.Initialize(*Renderer::GGraphicsDevice);
+	m_psoCache.Initialize(*GGraphicsDevice);
+	m_samplerCache.Initialize(*GGraphicsDevice);
 
 	GGraphicsDevice->PresentBegin();
 	{
@@ -37,11 +37,15 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		m_gbuffer.Add(RTFormat_GBuffer2);
 
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
-		 
+		
+		m_linearDepth.Initialize(window->GetWidth(), window->GetHeight(), false, Renderer::RTFormat_LinearDepth);
+
 		m_selectionTexture.Initialize(window->GetWidth(), window->GetHeight());
 		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight(), 1U, 0.0f, 0);
 
 		m_shadowMap.Initialize(DSShadowMap_Resolution, DSShadowMap_Resolution, 1U, 1.0f, 0);
+
+		m_ambientOcclusion.Initialize(window->GetWidth(), window->GetHeight());
 
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
@@ -91,6 +95,15 @@ void Renderer::InitializeConstantBuffers()
 		GGraphicsDevice->CreateBuffer(bd, &initData, m_specularMapFilterCB);
 		GGraphicsDevice->TransitionBarrier(m_specularMapFilterCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
+}
+
+
+void Renderer::InitializePSO()
+{
+	GGraphicsDevice->Flush();
+
+	m_psoCache.Clean();
+	m_psoCache.Initialize(*GGraphicsDevice);
 }
 
 void Renderer::InitializeHitProxyBuffers()
@@ -272,6 +285,7 @@ void Renderer::RenderLighting()
 	BindGBuffer();
 	BindShadowMap();
 
+	GGraphicsDevice->BindResource(PS, m_ambientOcclusion.GetAO(), 8);
 	GGraphicsDevice->BindUnorderedAccessResource(PS, m_hitProxy, 0);
 
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LightingPass));
@@ -290,6 +304,15 @@ void Renderer::RenderBackground()
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 }
 
+
+void Renderer::RenderAmbientOcclusion()
+{
+	GGraphicsDevice->BindResource(PS, m_gbuffer.GetTexture(1), 0);
+	GGraphicsDevice->BindResource(PS, m_linearDepth.GetTexture(0), 1);
+	
+	m_ambientOcclusion.ComputeAO(this);
+}
+
 void Renderer::DoPostProcess()
 {
 	// Reinhard Tonemapping
@@ -298,6 +321,21 @@ void Renderer::DoPostProcess()
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::TonemappingReinhard));
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
+}
+
+
+void Renderer::LinearizeDepth(const Camera& camera)
+{
+	m_linearDepth.Activate();
+
+	m_ambientOcclusion.UpdateConstants(this, camera);
+
+	GGraphicsDevice->BindResource(PS, m_gbuffer.GetDepthTexture(), 0);
+	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::PointClamp), 0);
+	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LinearizeDepth));
+	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
+
+	m_linearDepth.Deactivate();
 }
 
 Renderer::HitProxyData Renderer::ReadBackHitProxy()

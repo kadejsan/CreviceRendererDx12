@@ -84,12 +84,12 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;$(ProjectDir)Lib\vulkan\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(ProjectDir)Lib\assimp\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Lib\assimp\win64;$(ProjectDir)Lib\vulkan\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -140,16 +140,19 @@
     <ClInclude Include="Gizmo.h" />
     <ClInclude Include="GlobalLightCamera.h" />
     <ClInclude Include="GlobalLightTrajectory.h" />
+    <ClInclude Include="GraphicsDevice_SharedInternals.h" />
     <ClInclude Include="GraphicsAPI.h" />
     <ClInclude Include="GraphicsDevice_DX12.h" />
     <ClInclude Include="DXHelper.h" />
     <ClInclude Include="GraphicsDescriptors.h" />
     <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="GraphicsDevice_Vulkan.h" />
     <ClInclude Include="GraphicsEnums.h" />
     <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="Grid.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Include_DX12.h" />
+    <ClInclude Include="Include_Vulkan.h" />
     <ClInclude Include="Lib\imgui\include\imconfig.h" />
     <ClInclude Include="Lib\imgui\include\imgui.h" />
     <ClInclude Include="Lib\imgui\include\imgui_impl_dx12.h" />
@@ -166,9 +169,13 @@
     <ClInclude Include="RenderObject.h" />
     <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="SamplerCache.h" />
+    <ClInclude Include="ShaderInterop_Vulkan.h" />
+    <ClInclude Include="SpinLock.h" />
+    <ClInclude Include="AmbientOcclusion.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StringUtils.h" />
     <ClInclude Include="TextRenderer.h" />
+    <ClInclude Include="ThreadSafeManager.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="UIContext.h" />
     <ClInclude Include="Utils.h" />
@@ -190,6 +197,7 @@
     <ClCompile Include="GlobalLightCamera.cpp" />
     <ClCompile Include="GlobalLightTrajectory.cpp" />
     <ClCompile Include="GraphicsDevice_DX12.cpp" />
+    <ClCompile Include="GraphicsDevice_Vulkan.cpp" />
     <ClCompile Include="GraphicsResource.cpp" />
     <ClCompile Include="Grid.cpp" />
     <ClCompile Include="Image.cpp" />
@@ -208,8 +216,10 @@
     <ClCompile Include="RenderObject.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="SamplerCache.cpp" />
+    <ClCompile Include="AmbientOcclusion.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
+    <ClCompile Include="ThreadSafeManager.cpp" />
     <ClCompile Include="UIContext.cpp" />
     <ClCompile Include="WICTextureLoader12.cpp" />
     <ClCompile Include="Win32Application.cpp" />
@@ -301,6 +311,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Common.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\AmbientOcclusion.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\LinearizeDepth.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

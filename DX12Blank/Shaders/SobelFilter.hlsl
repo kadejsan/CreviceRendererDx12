@@ -41,6 +41,7 @@ cbuffer cbPerObject : register(b0)
 	float4x4	gLightViewProj;
 	float4x4	gCubemapRotation;
 	float4		gScreenDim;
+	float       gEnableSSAO;
 };
 
 static float3x3 Kx = {

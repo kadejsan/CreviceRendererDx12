@@ -37,6 +37,9 @@
     <Filter Include="Engine\Lighting">
       <UniqueIdentifier>{a67fa749-e4ab-4e1a-9c71-98fcccf73deb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\GpuApi\Vulkan">
+      <UniqueIdentifier>{2d794117-a038-445a-8f09-625487fa28bb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -183,6 +186,27 @@
     <ClInclude Include="GlobalLightCamera.h">
       <Filter>Engine\Lighting</Filter>
     </ClInclude>
+    <ClInclude Include="Include_Vulkan.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsDevice_Vulkan.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderInterop_Vulkan.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsDevice_SharedInternals.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadSafeManager.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="SpinLock.h">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="AmbientOcclusion.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -296,6 +320,15 @@
     <ClCompile Include="GlobalLightCamera.cpp">
       <Filter>Engine\Lighting</Filter>
     </ClCompile>
+    <ClCompile Include="GraphicsDevice_Vulkan.cpp">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadSafeManager.cpp">
+      <Filter>Engine\Graphics\GpuApi\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="AmbientOcclusion.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -354,6 +387,12 @@
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
     <None Include="Shaders\Common.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\AmbientOcclusion.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\LinearizeDepth.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
   </ItemGroup>

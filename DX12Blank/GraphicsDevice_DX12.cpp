@@ -2647,7 +2647,7 @@ namespace Graphics
 
 		buffer->m_desc = desc;
 
-		uint32_t alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+		uint32_t alignment = D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
 		if(desc.BindFlags & BIND_CONSTANT_BUFFER)
 		{
 			alignment = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;

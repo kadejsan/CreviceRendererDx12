@@ -29,4 +29,10 @@ public:
 	static int FOV;
 	static float Near;
 	static float Far;
+
+	static bool  EnableSSAO;
+	static float OcclusionRadius;
+	static float OcclusionPower;
+	static float OcclusionFalloff;
+	static float OcclusionDarkness;
 };
