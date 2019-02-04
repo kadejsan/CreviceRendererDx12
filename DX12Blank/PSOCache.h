@@ -26,6 +26,7 @@ enum eGPSO
 	SobelFilter,
 	LinearizeDepth,
 	AmbientOcclusionPass,
+	Blur,
 
 	GPSO_MAX,
 };

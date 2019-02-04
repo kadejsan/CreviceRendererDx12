@@ -12,6 +12,7 @@ public:
 	static void ShowAddObjectSettings(CreviceWindow* window, bool addPlane, bool addBox, bool addSphere, bool addCone, bool addCylinder);
 	static void ShowSceneSettings();
 	static void ShowCameraSettings();
+	static void ShowPostProcessSettings();
 	static void ShowObjectSettings(RenderObject& ro);
 
 	static bool Wireframe;
@@ -35,4 +36,5 @@ public:
 	static float OcclusionPower;
 	static float OcclusionFalloff;
 	static float OcclusionDarkness;
+	static float OcclusionRangeCheck;
 };

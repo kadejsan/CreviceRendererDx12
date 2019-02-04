@@ -19,6 +19,7 @@ cbuffer cbPerObject : register(b1)
 	float gOcclusionPower;
 	float gOcclusionFallof;
 	float gOcclusionDarkness;
+	float gOcclusionRange;
 	float gCameraNear;
 	float gCameraFar;
 	float gCameraNearInv;

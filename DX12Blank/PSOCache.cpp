@@ -202,6 +202,14 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	m_cacheGraphics[AmbientOcclusionPass] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[AmbientOcclusionPass].get());
 
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\Blur.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\Blur.hlsl", psoDesc.PS);
+	psoDesc.RTFormats[0] = Renderer::RTFormat_AO;
+	m_cacheGraphics[Blur] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[Blur].get());
+
 	// Simple Color
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();

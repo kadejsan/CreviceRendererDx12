@@ -16,10 +16,11 @@ public:
 	void UpdateConstants(Renderer* renderer, const Camera& camera);
 	void ComputeAO(Renderer* renderer);
 
-	inline Texture2D* GetAO() const { return m_ao.GetTexture(0); }
+	inline Texture2D* GetAO() const { return m_aoFinal.GetTexture(0); }
 
 private:
 	RenderTarget	m_ao;
+	RenderTarget	m_aoFinal;
 	GPUBuffer*		m_sampleKernel;
 	Texture2D*		m_noiseTexture;
 
@@ -41,12 +42,19 @@ private:
 		float OcclusionPower;
 		float OcclusionFalloff;
 		float OcclusionDarkness;
+		float OcclusionRangeCheck;
 		float CamerNear;
 		float CameraFar;
 		float CameraNearInv;
 		float CameraFarInv;
 	};
 	GPUBuffer*		m_psCB;
+
+	struct BlurPSConstants
+	{
+		UINT BlurDimensions;
+	};
+	GPUBuffer*		m_psBlurCB;
 
 private:
 	UINT			m_sampleKernelSize;

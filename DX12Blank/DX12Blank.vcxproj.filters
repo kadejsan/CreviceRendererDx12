@@ -395,5 +395,8 @@
     <None Include="Shaders\LinearizeDepth.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
     </None>
+    <None Include="Shaders\Blur.hlsl">
+      <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

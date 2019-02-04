@@ -26,9 +26,11 @@ float UIContext::OcclusionRadius = 0.26f;
 float UIContext::OcclusionPower = 8.0f;
 float UIContext::OcclusionFalloff = -0.4f;
 float UIContext::OcclusionDarkness = 1.0f;
+float UIContext::OcclusionRangeCheck = 1.0f;
 
 static bool showSceneSettings = true;
 static bool showCameraSettings = false;
+static bool showPostProcessSettings = false;
 
 void UIContext::DrawUI(CreviceWindow* window)
 {
@@ -70,6 +72,7 @@ void UIContext::DrawUI(CreviceWindow* window)
 		{
 			if (ImGui::MenuItem("Scene Settings", NULL, &showSceneSettings)) {}
 			if (ImGui::MenuItem("Camera Settings", NULL, &showCameraSettings)) {}
+			if (ImGui::MenuItem("Post Process Settings", NULL, &showPostProcessSettings)) {}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
@@ -78,6 +81,7 @@ void UIContext::DrawUI(CreviceWindow* window)
 	ShowAddObjectSettings(window, addPlane, addBox, addSphere, addCone, addCylinder);
 	if (showSceneSettings) ShowSceneSettings();
 	if (showCameraSettings) ShowCameraSettings();
+	if (showPostProcessSettings) ShowPostProcessSettings();
 }
 
 void UIContext::ShowAddObjectSettings(CreviceWindow* window, bool addPlane, bool addBox, bool addSphere, bool addCone, bool addCylinder)
@@ -220,7 +224,7 @@ void UIContext::ShowAddObjectSettings(CreviceWindow* window, bool addPlane, bool
 
 void UIContext::ShowSceneSettings()
 {
-	ImGui::Begin("Scene settings", &showSceneSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+	ImGui::Begin("Scene Settings", &showSceneSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 	{
 		ImGui::Checkbox("Wireframe", &Wireframe);
 		ImGui::Checkbox("Grid", &DebugGrid);
@@ -250,19 +254,26 @@ void UIContext::ShowSceneSettings()
 
 void UIContext::ShowCameraSettings()
 {
-	ImGui::Begin("Camera settings", &showCameraSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+	ImGui::Begin("Camera Settings", &showCameraSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 	{
 		ImGui::SliderInt("FOV", &FOV, 30, 90);
 		ImGui::SliderFloat("Near", &Near, 0.01f, 1.0f);
 		ImGui::SliderFloat("Far", &Far, 100.0f, 4000.0f);
+	}
+	ImGui::End();
+}
 
-		ImGui::Separator();
 
+void UIContext::ShowPostProcessSettings()
+{
+	ImGui::Begin("Post Process Settings", &showPostProcessSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+	{
 		ImGui::Checkbox("Enable SSAO", &EnableSSAO);
 		ImGui::SliderFloat("AO Radius", &OcclusionRadius, 0.0f, 1.0f);
 		ImGui::SliderFloat("AO Strength", &OcclusionPower, 1.0f, 20.0f);
 		ImGui::SliderFloat("AO Falloff", &OcclusionFalloff, -1.0f, 1.0f);
 		ImGui::SliderFloat("AO Darkness", &OcclusionDarkness, 1.0f, 10.0f);
+		ImGui::SliderFloat("AO Range", &OcclusionRangeCheck, 0.0f, 10.0f);
 	}
 	ImGui::End();
 }

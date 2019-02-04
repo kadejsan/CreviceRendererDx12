@@ -95,11 +95,13 @@ AmbientOcclusion::~AmbientOcclusion()
 	delete m_noiseTexture;
 	delete m_vsCB;
 	delete m_psCB;
+	delete m_psBlurCB;
 }
 
 void AmbientOcclusion::Initialize(UINT width, UINT height)
 {
 	m_ao.Initialize(width, height, false, Renderer::RTFormat_AO);
+	m_aoFinal.Initialize(width, height, false, Renderer::RTFormat_AO);
 
 	if (m_sampleKernel == nullptr)
 	{
@@ -178,6 +180,24 @@ void AmbientOcclusion::Initialize(UINT width, UINT height)
 		Renderer::GetDevice()->CreateBuffer(bd, &initData, m_psCB);
 		Renderer::GetDevice()->TransitionBarrier(m_psCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
+
+	if (m_psBlurCB == nullptr)
+	{
+		m_psBlurCB = new Graphics::GPUBuffer();
+
+		AoPSConstants aoCB;
+		ZeroMemory(&aoCB, sizeof(aoCB));
+
+		GPUBufferDesc bd;
+		bd.BindFlags = BIND_CONSTANT_BUFFER;
+		bd.Usage = USAGE_DEFAULT;
+		bd.CpuAccessFlags = 0;
+		bd.ByteWidth = sizeof(BlurPSConstants);
+		SubresourceData initData;
+		initData.SysMem = &aoCB;
+		Renderer::GetDevice()->CreateBuffer(bd, &initData, m_psBlurCB);
+		Renderer::GetDevice()->TransitionBarrier(m_psBlurCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	}
 }
 
 void AmbientOcclusion::UpdateConstants(Renderer* renderer, const Camera& camera)
@@ -201,6 +221,7 @@ void AmbientOcclusion::UpdateConstants(Renderer* renderer, const Camera& camera)
 		psCB.OcclusionPower = UIContext::OcclusionPower;
 		psCB.OcclusionFalloff = UIContext::OcclusionFalloff;
 		psCB.OcclusionDarkness = UIContext::OcclusionDarkness;
+		psCB.OcclusionRangeCheck = UIContext::OcclusionRangeCheck;
 		psCB.ScreenWidth = (float)m_ao.GetDesc().Width;
 		psCB.ScreenHeight = (float)m_ao.GetDesc().Height;
 		psCB.CamerNear = camera.m_nearZ;
@@ -208,6 +229,12 @@ void AmbientOcclusion::UpdateConstants(Renderer* renderer, const Camera& camera)
 		psCB.CameraNearInv = 1.0f / camera.m_nearZ;
 		psCB.CameraFarInv = 1.0f / camera.m_farZ;
 		renderer->GetDevice()->UpdateBuffer(m_psCB, &psCB, sizeof(AoPSConstants));
+	}
+
+	{
+		BlurPSConstants psCB;
+		psCB.BlurDimensions = 4;
+		renderer->GetDevice()->UpdateBuffer(m_psBlurCB, &psCB, sizeof(BlurPSConstants));
 	}
 
 	renderer->GetDevice()->BindConstantBuffer(SHADERSTAGE::VS, m_vsCB, 0);
@@ -227,4 +254,14 @@ void AmbientOcclusion::ComputeAO(Renderer* renderer)
 	renderer->GetDevice()->DrawInstanced(3, 1, 0, 0);
 
 	m_ao.Deactivate();
+
+	m_aoFinal.Activate();
+
+	renderer->GetDevice()->BindConstantBuffer(SHADERSTAGE::PS, m_psBlurCB, 0);
+	renderer->GetDevice()->BindResource(SHADERSTAGE::PS, m_ao.GetTexture(0), 0);
+	renderer->GetDevice()->BindSampler(SHADERSTAGE::PS, renderer->GetSamplerState(eSamplerState::LinearClamp), 0);
+	renderer->GetDevice()->BindGraphicsPSO(renderer->GetPSO(eGPSO::Blur));
+	renderer->GetDevice()->DrawInstanced(3, 1, 0, 0);
+
+	m_aoFinal.Deactivate();
 }
