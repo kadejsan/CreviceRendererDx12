@@ -159,6 +159,7 @@ void CreviceWindow::OnRender()
 		{
 			ScopedTimer perf("Lighting Pass", Renderer::GGraphicsDevice);
 
+			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_shadingCB, 0);
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 1);
 
