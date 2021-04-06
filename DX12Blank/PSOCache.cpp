@@ -19,6 +19,7 @@ void PSOCache::Initialize(Graphics::GraphicsDevice& device)
 {
 	InitializeGraphics(device);
 	InitializeCompute(device);
+	if(device.SupportRayTracing()) InitializeRayTrace(device);
 }
 
 
@@ -262,4 +263,34 @@ void PSOCache::InitializeCompute(Graphics::GraphicsDevice& device)
 	device.CreateShader(L"Shaders\\Spbrdf.hlsl", psoDesc.CS);
 	m_cacheCompute[SpecularBRDFLut] = std::make_unique<ComputePSO>();
 	device.CreateComputePSO(&psoDesc, m_cacheCompute[SpecularBRDFLut].get());
+}
+
+void PSOCache::InitializeRayTrace(Graphics::GraphicsDevice& device)
+{
+	m_cacheRayTrace.resize(RTPSO_MAX);
+
+	RayTracePSODesc psoDesc = {};
+	psoDesc.RGS = new RayGenerationShader();
+	psoDesc.MS = new RayMissShader();
+	psoDesc.CHS = new RayClosestHitShader();
+	psoDesc.HitGroup = new HitGroup();
+	psoDesc.HitGroup->m_desc.HitGroupName = L"HitGroup";
+	psoDesc.HitGroup->m_desc.ClosestHitSymbol = L"ClosestHit";
+	psoDesc.MaxPayloadSize = 10 * sizeof(float); // RGB and HitT, normal, roughness, metalness, ID
+	psoDesc.MaxAttributeSize = 2 * sizeof(float); // barycentric coordinates
+	psoDesc.MaxRecursionDepth = 1;
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialSimpleRT.hlsl", psoDesc.RGS);
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialSimpleRT.hlsl", psoDesc.MS);
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialSimpleRT.hlsl", psoDesc.CHS);
+	m_cacheRayTrace[PBRSimpleSolidRT] = std::make_unique<RayTracePSO>();
+	device.CreateRayTracePSO(&psoDesc, m_cacheRayTrace[PBRSimpleSolidRT].get());
+
+	psoDesc.RGS = new RayGenerationShader();
+	psoDesc.MS = new RayMissShader();
+	psoDesc.CHS = new RayClosestHitShader();
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialRT.hlsl", psoDesc.RGS);
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialRT.hlsl", psoDesc.MS);
+	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialRT.hlsl", psoDesc.CHS);
+	m_cacheRayTrace[PBRSolidRT] = std::make_unique<RayTracePSO>();
+	device.CreateRayTracePSO(&psoDesc, m_cacheRayTrace[PBRSolidRT].get());
 }

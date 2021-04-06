@@ -1,3 +1,4 @@
+#include "Common.hlsl"
 
 struct VertexIn
 {
@@ -59,7 +60,7 @@ Texture2D<float4>	Normal		: register(t1);
 Texture2D<float>	Roughness	: register(t2);
 Texture2D<float>	Metalness	: register(t3);
 
-SamplerState		Sampler		  : register(s0);
+SamplerState		Sampler		: register(s0);
 
 cbuffer cbPerObject : register(b0)
 {
@@ -68,12 +69,6 @@ cbuffer cbPerObject : register(b0)
 	float	 gMetalness;
 	uint	 gObjectID;
 };
-
-float3 CompressNormalsToUnsignedGBuffer(float3 vNormal)
-{
-	const float maxXYZ = max(abs(vNormal.x), max(abs(vNormal.y), abs(vNormal.z)));
-	return vNormal / maxXYZ * 0.5 + 0.5;
-}
 
 void ps_main(in VertexOut pin, out PixelOut pout)
 {

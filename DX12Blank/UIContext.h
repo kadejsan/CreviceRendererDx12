@@ -17,6 +17,7 @@ public:
 
 	static bool Wireframe;
 	static bool DebugGrid;
+	static bool UseRayTracing;
 
 	static int HDRSkybox;
 	static int PBRModel;

@@ -23,6 +23,7 @@
 #endif
 
 #include <d3dcompiler.h>
+#include <dxcapi.h>
 
 #include "Types.h"
 
@@ -44,7 +45,18 @@
 #include <set>
 #include <iostream>
 
-#define LOG( str, ... ) { char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); OutputDebugString(buffer); }
+#ifdef _DEBUG
+#define LOG( str, ... ) \
+{ \
+	char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); \
+	size_t len = strlen(buffer); \
+	buffer[len] = '\n'; \
+	buffer[len+1] = '\0'; \
+	OutputDebugString(buffer); \
+} 
+#else
+#define LOG( str, ... ) { }
+#endif
 
 #define SAFE_INIT(a) (a) = nullptr;
 #define SAFE_RELEASE(a) if((a)!=nullptr){(a)->Release();(a)=nullptr;}

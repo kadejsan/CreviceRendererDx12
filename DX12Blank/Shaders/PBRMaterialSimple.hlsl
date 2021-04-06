@@ -1,3 +1,4 @@
+#include "Common.hlsl"
 
 struct VertexIn
 {
@@ -59,12 +60,6 @@ cbuffer cbPerObject : register(b0)
 };
 
 SamplerState		Sampler		  : register(s0);
-
-float3 CompressNormalsToUnsignedGBuffer(float3 vNormal)
-{
-	const float maxXYZ = max(abs(vNormal.x), max(abs(vNormal.y), abs(vNormal.z)));
-	return vNormal / maxXYZ * 0.5 + 0.5;
-}
 
 void ps_main(in VertexOut pin, out PixelOut pout)
 {

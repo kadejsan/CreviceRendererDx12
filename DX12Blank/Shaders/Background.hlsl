@@ -49,7 +49,7 @@ cbuffer cbPerObject : register(b0)
 
 float IsSky(float depth)
 {
-	return depth < 1.0f;
+	return depth == 1.0f;
 }
 
 float4 ps_main(PixelShaderInput pin) : SV_Target
@@ -58,7 +58,7 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 
 	// is sky
 	float depth = Depth.SampleLevel(Sampler, pixelCoord, 0).x;
-	if( IsSky(depth) ) discard;
+	if( !IsSky(depth) ) discard;
 
 	float3 viewDir = normalize( PositionFromDepth(1.0f, pixelCoord, gScreenDim.w, gScreenToWorld) );
 

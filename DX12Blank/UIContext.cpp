@@ -7,6 +7,7 @@
 
 bool UIContext::Wireframe = false;
 bool UIContext::DebugGrid = true;
+bool UIContext::UseRayTracing = false;
 
 int UIContext::HDRSkybox = 1;
 int UIContext::PBRModel = 0;
@@ -228,6 +229,7 @@ void UIContext::ShowSceneSettings()
 	{
 		ImGui::Checkbox("Wireframe", &Wireframe);
 		ImGui::Checkbox("Grid", &DebugGrid);
+		ImGui::Checkbox("RayTracing", &UseRayTracing);
 
 		ImGui::Separator();
 

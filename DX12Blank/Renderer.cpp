@@ -29,12 +29,15 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 
 	m_psoCache.Initialize(*GGraphicsDevice);
 	m_samplerCache.Initialize(*GGraphicsDevice);
+	m_stbCache.Initialize(*GGraphicsDevice, m_psoCache);
 
 	GGraphicsDevice->PresentBegin();
 	{
 		m_gbuffer.Initialize(window->GetWidth(), window->GetHeight(), true, RTFormat_GBuffer0);
 		m_gbuffer.Add(RTFormat_GBuffer1);
 		m_gbuffer.Add(RTFormat_GBuffer2);
+		if (GGraphicsDevice->SupportRayTracing())
+			m_gbuffer.Add(RTFormat_DepthResolve);
 
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
 		
@@ -104,6 +107,40 @@ void Renderer::InitializePSO()
 
 	m_psoCache.Clean();
 	m_psoCache.Initialize(*GGraphicsDevice);
+}
+
+Graphics::DispatchRaysDesc Renderer::InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth)
+{
+	DispatchRaysDesc dispatchRaysDesc;
+	dispatchRaysDesc.RayGeneration.GpuAddress = stb->m_shaderTable->GetGPUVirtualAddress();
+	dispatchRaysDesc.RayGeneration.Size = stb->m_shaderTableRecordSize;
+
+	dispatchRaysDesc.Miss.GpuAddress = stb->m_shaderTable->GetGPUVirtualAddress() + stb->m_shaderTableRecordSize;
+	dispatchRaysDesc.Miss.Size = stb->m_shaderTableRecordSize;
+	dispatchRaysDesc.Miss.Stride = stb->m_shaderTableRecordSize;
+
+	dispatchRaysDesc.HitGroup.GpuAddress = stb->m_shaderTable->GetGPUVirtualAddress() + (stb->m_shaderTableRecordSize * 2);
+	dispatchRaysDesc.HitGroup.Size = stb->m_shaderTableRecordSize;
+	dispatchRaysDesc.HitGroup.Stride = stb->m_shaderTableRecordSize;
+
+	dispatchRaysDesc.Width = width;
+	dispatchRaysDesc.Height = height;
+	dispatchRaysDesc.Depth = depth;
+
+	return dispatchRaysDesc;
+}
+
+void Renderer::RenderRayTracedObjects(eRTPSO pso)
+{
+	RayTracePSO* rtpso = GetPSO(pso);
+	ShaderTable* stb = GetSTB(pso);
+
+	UINT w = m_frameBuffer.GetDesc().Width;
+	UINT h = m_frameBuffer.GetDesc().Height;
+
+	DispatchRaysDesc dispatchRaysDesc = InitializeDispatchRaysDesc(rtpso, stb, w, h, 1);
+
+	GGraphicsDevice->DispatchRays(dispatchRaysDesc);
 }
 
 void Renderer::InitializeHitProxyBuffers()
@@ -252,9 +289,29 @@ void Renderer::BindGBuffer()
 		m_gbuffer.GetTexture(0),
 		m_gbuffer.GetTexture(1),
 		m_gbuffer.GetTexture(2),
-		m_gbuffer.GetDepthTexture()
+		GGraphicsDevice->UseRayTracing() ? m_gbuffer.GetTexture(3) : m_gbuffer.GetDepthTexture()
 	};
 	GGraphicsDevice->BindResources(PS, textures, 0, 4);
+}
+
+void Renderer::BindGBufferUAV(bool set /*=true*/)
+{
+	if (set)
+	{
+		m_gbuffer.Clear();
+
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(0), 0);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(1), 1);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(2), 2);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(3), 3);
+	}
+	else
+	{
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 0);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 1);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 2);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 3);
+	}
 }
 
 void Renderer::BindEnvTexture(SHADERSTAGE stage, int slot)
@@ -297,7 +354,7 @@ void Renderer::RenderLighting()
 void Renderer::RenderBackground()
 {
 	BindEnvTexture(PS, 0);
-	GGraphicsDevice->BindResource(PS, m_gbuffer.GetDepthTexture(), 1);
+	GGraphicsDevice->BindResource(PS, GGraphicsDevice->UseRayTracing() ? m_gbuffer.GetTexture(3) : m_gbuffer.GetDepthTexture(), 1);
 
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::Background));
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::LinearClamp), 0);
@@ -330,7 +387,7 @@ void Renderer::LinearizeDepth(const Camera& camera)
 
 	m_ambientOcclusion.UpdateConstants(this, camera);
 
-	GGraphicsDevice->BindResource(PS, m_gbuffer.GetDepthTexture(), 0);
+	GGraphicsDevice->BindResource(PS, GGraphicsDevice->UseRayTracing() ? m_gbuffer.GetTexture(3) : m_gbuffer.GetDepthTexture(), 0);
 	GGraphicsDevice->BindSampler(SHADERSTAGE::PS, GetSamplerState(eSamplerState::PointClamp), 0);
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LinearizeDepth));
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);

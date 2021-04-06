@@ -7,6 +7,7 @@
 #include <wrl.h>
 
 #pragma comment(lib,"d3dcompiler.lib")
+#pragma comment(lib,"dxcompiler.lib")
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"Dxgi.lib")
 #pragma comment(lib,"dxguid.lib")

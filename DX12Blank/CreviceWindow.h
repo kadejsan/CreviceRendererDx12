@@ -67,6 +67,7 @@ private:
 	void InitializeTextures();
 	void InitializeMesh();
 	void InitializeConstantBuffers();
+	void InitializeRayTracingAccelerationStructure();
 	void UpdateGlobalConstantBuffer();
 	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id = -1);
 	void UpdateObjectConstantBufferShadows(const RenderObject& renderObject, const GlobalLightCamera& lightCamera);
@@ -112,6 +113,14 @@ private:
 	};
 	GPUBuffer*		m_backgroundCB;
 
+	struct RayTracedGBufferCB
+	{
+		float4x4 View;
+		float4	 EyePos = float4(0, 0, 0, 0);
+		float4	 ResolutionTanHalfFovYAndAspectRatio;
+	};
+	GPUBuffer* m_rayTracedGBufferCB;
+
 	Texture2D*		m_textures[ETT_Max];
 	enum EModelType
 	{
@@ -122,6 +131,9 @@ private:
 	RenderObject	m_model[EMT_Max];
 	Grid			m_grid;
 	Gizmo			m_gizmo;
+	EModelType		m_modelID;
+
+	RayTracingAccelerationStructure* m_rtAccelerationStructure;
 
 	bool			m_readHitProxy;
 	int				m_hitProxyID;

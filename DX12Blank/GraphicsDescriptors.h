@@ -8,20 +8,31 @@ namespace Graphics
 	class DomainShader;
 	class GeometryShader;
 	class ComputeShader;
+	class RayGenerationShader;
+	class RayMissShader;
+	class RayClosestHitShader;
+	class RayAnyHitShader;
+	class RayIntersectionShader;
 	class BlendState;
 	class RasterizerState;
 	class DepthStencilState;
 	class VertexLayout;
+	class HitGroup;
 
 	enum SHADERSTAGE
 	{
-		VS,
-		HS,
-		DS,
-		GS,
-		PS,
-		CS,
-		SHADERSTAGE_MAX
+		VS,	 // VertexShader
+		HS,	 // HullShader
+		DS,	 // DomainShader
+		GS,  // GeometryShader
+		PS,	 // PixelShader
+		CS,	 // ComputeShader
+		RGS, // RayGenerationShader
+		MS,  // MissShader
+		AHS, // AnyHitShader
+		CHS, // ClosestHitShader
+		IS,  // IntersectionShader
+		SHADERSTAGE_MAX,
 	};
 
 	enum PRIMITIVETOPOLOGY
@@ -122,6 +133,7 @@ namespace Graphics
 		USAGE_IMMUTABLE,
 		USAGE_DYNAMIC,
 		USAGE_STAGING,
+		USAGE_ACCELERATION_STRUCTURE
 	};
 
 	enum INPUT_CLASSIFICATION
@@ -339,6 +351,7 @@ namespace Graphics
 		RESOURCE_MISC_DRAWINDIRECT_ARGS = 0x10L,
 		RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS = 0x20L,
 		RESOURCE_MISC_BUFFER_STRUCTURED = 0x40L,
+		RESOURCE_MISC_ACCELERATION_STRUCTURE = 0x80L,
 		RESOURCE_MISC_TILED = 0x40000L,
 	};
 
@@ -368,10 +381,50 @@ namespace Graphics
 		RESOURCE_STATE_VIDEO_PROCESS_WRITE = 0x80000
 	};
 
+	enum ACCELERATION_STRUCTURE_BUILD_FLAGS
+	{
+		AS_BUILD_FLAG_EMPTY = 0,
+		AS_BUILD_FLAG_ALLOW_UPDATE = 1 << 0,
+		AS_BUILD_FLAG_ALLOW_COMPACTION = 1 << 1,
+		AS_BUILD_FLAG_PREFER_FAST_TRACE = 1 << 2,
+		AS_BUILD_FLAG_PREFER_FAST_BUILD = 1 << 3,
+		AS_BUILD_FLAG_MINIMIZE_MEMORY = 1 << 4
+	};
+
+	enum ACCELERATION_STRUCTURE_TYPE
+	{
+		AS_TYPE_BOTTOMLEVEL,
+		AS_TYPE_TOPLEVEL
+	};
+
+	enum ACCELERATION_STRUCTURE_BOTTOM_LEVEL_GEOMETRY_FLAGS
+	{
+		AS_BOTTOM_LEVEL_GEOMETRY_FLAG_EMPTY = 0,
+		AS_BOTTOM_LEVEL_GEOMETRY_FLAG_OPAQUE = 1 << 0,
+		AS_BOTTOM_LEVEL_GEOMETRY_FLAG_DUPLICATE_ANYHIT_INVOCATION = 1 << 1,
+		AS_BOTTOM_LEVEL_GEOMETRY_FLAG_USE_TRANSFORM = 1 << 2
+	};
+
+	enum ACCELERATION_STRUCTURE_BOTTOM_LEVEL_GEOMETRY_TYPE
+	{
+		AS_BOTTOM_LEVEL_GEOMETRY_TYPE_TRIANGLES,
+		AS_BOTTOM_LEVEL_GEOMETRY_TYPE_PROCEDURAL_AABB
+	};
+
+	enum RAYTRACING_INSTANCE_FLAGS
+	{
+		RAYTRACING_INSTANCE_FLAG_NONE = 0,
+		RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE = 1 << 0,
+		RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE = 1 << 1,
+		RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE = 1 << 2,
+		RAYTRACING_INSTANCE_FLAG_FORCE_NON_OPAQUE = 1 << 3
+	};
+
 #define	APPEND_ALIGNED_ELEMENT			( 0xffffffff )
 #define FLOAT32_MAX						( 3.402823466e+38f )
 #define DEFAULT_STENCIL_READ_MASK		( 0xff )
 #define SO_NO_RASTERIZED_STREAM			( 0xffffffff )
+#define RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES 32
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
@@ -637,6 +690,154 @@ namespace Graphics
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
+	struct HitGroupDesc
+	{
+		std::wstring HitGroupName;
+		std::wstring ClosestHitSymbol;
+		std::wstring AnyHitSymbol;
+		std::wstring IntersectionSymbol;
+
+		HitGroupDesc() :
+			HitGroupName(L"HitGroup"),
+			ClosestHitSymbol(L""),
+			AnyHitSymbol(L""),
+			IntersectionSymbol(L"")
+		{}
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	struct RayTracingAccelerationStructureDesc
+	{
+		struct BottomLevelAccelerationStructure
+		{
+			struct Geometry
+			{
+				struct Triangles
+				{
+					UINT64				VertexBufferGPUVirtualAddress;
+					UINT64				IndexBufferGPUVirtualAddress;
+					UINT32				VertexCount;
+					UINT32				VertexByteOffset;
+					UINT32				VertexStride;
+					FORMAT				VertexFormat;
+					UINT32				IndexCount;
+					UINT32				IndexOffset;
+					INDEXBUFFER_FORMAT	IndexFormat;
+					UINT64				Transform3x4BufferVirtualAddress;
+					UINT32				Transform3x4BufferOffset;
+
+					Triangles()
+						: VertexBufferGPUVirtualAddress(0)
+						, IndexBufferGPUVirtualAddress(0)
+						, VertexCount(0)
+						, VertexByteOffset(0)
+						, VertexStride(0)
+						, VertexFormat(FORMAT_R32G32B32_FLOAT)
+						, IndexCount(0)
+						, IndexOffset(0)
+						, IndexFormat(INDEXFORMAT_16BIT)
+						, Transform3x4BufferVirtualAddress(0)
+						, Transform3x4BufferOffset(0)
+					{}
+				};
+
+				struct Procedural_AABBs
+				{
+					UINT64		AABBBufferGPUVirtualAddress;
+					UINT32		Offset;
+					UINT32		Count;
+					UINT32		Stride;
+
+					Procedural_AABBs()
+						: AABBBufferGPUVirtualAddress(0)
+						, Offset(0)
+						, Count(0)
+						, Stride(0)
+					{}
+				};
+
+				UINT32											  Flags;
+				ACCELERATION_STRUCTURE_BOTTOM_LEVEL_GEOMETRY_TYPE Type;
+				Triangles										  Triangles;
+				Procedural_AABBs								  AABBs;
+
+				Geometry()
+					: Flags(AS_BOTTOM_LEVEL_GEOMETRY_FLAG_EMPTY)
+					, Type(AS_BOTTOM_LEVEL_GEOMETRY_TYPE_TRIANGLES)
+				{}
+			};
+
+			std::vector<Geometry> Geometries;
+
+			BottomLevelAccelerationStructure()
+			{}
+		};
+
+		struct TopLevelAccelerationStructure
+		{
+			struct Instance
+			{
+				XMFLOAT3X4		Transform;
+				UINT32			InstanceID : 24;
+				UINT32			InstanceMask : 8;
+				UINT32			InstanceContributionToHitGroupIndex : 24;
+				UINT32			Flags : 8;
+
+				Instance()
+					: Transform()
+					, InstanceID(0)
+					, InstanceMask(0)
+					, InstanceContributionToHitGroupIndex(0)
+					, Flags(RAYTRACING_INSTANCE_FLAG_NONE)
+				{}
+			};
+
+			std::vector<Instance> Instances;
+
+			TopLevelAccelerationStructure()
+			{}
+		};
+
+		UINT32								Flags;
+		ACCELERATION_STRUCTURE_TYPE			Type;
+		BottomLevelAccelerationStructure	BottomLevelAS;
+		TopLevelAccelerationStructure		TopLevelAS;
+
+		RayTracingAccelerationStructureDesc()
+			: Flags(AS_BUILD_FLAG_EMPTY)
+			, Type(AS_TYPE_BOTTOMLEVEL)
+		{}
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+	struct ShaderTableDesc
+	{
+		UINT64  GpuAddress;
+		UINT64	Size;
+		UINT64	Stride;
+
+		ShaderTableDesc()
+			: GpuAddress(0)
+			, Size(0)
+			, Stride(0)
+		{}
+	};
+
+	struct DispatchRaysDesc
+	{
+		ShaderTableDesc RayGeneration;
+		ShaderTableDesc	Miss;
+		ShaderTableDesc	HitGroup;
+		ShaderTableDesc	Callable;
+		UINT32			Width;
+		UINT32			Height;
+		UINT32			Depth;
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
 	struct GraphicsPSODesc
 	{
 		VertexShader*			VS;
@@ -688,6 +889,32 @@ namespace Graphics
 		ComputePSODesc()
 		{
 			SAFE_INIT(CS);
+		}
+	};
+
+	struct RayTracePSODesc
+	{
+		RayGenerationShader*	RGS;
+		RayMissShader*			MS;
+		RayClosestHitShader*	CHS;
+		RayAnyHitShader*		AHS;
+		RayIntersectionShader*  IS;
+		HitGroup*				HitGroup;
+		UINT					MaxPayloadSize;
+		UINT					MaxAttributeSize;
+		UINT					MaxRecursionDepth;
+
+		RayTracePSODesc()
+		{
+			SAFE_INIT(RGS);
+			SAFE_INIT(MS);
+			SAFE_INIT(CHS);
+			SAFE_INIT(AHS);
+			SAFE_INIT(IS);
+			SAFE_INIT(HitGroup);
+			MaxPayloadSize = 0;
+			MaxAttributeSize = RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES;
+			MaxRecursionDepth = 1;
 		}
 	};
 }

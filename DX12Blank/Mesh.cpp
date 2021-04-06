@@ -42,8 +42,14 @@ void Mesh::Draw(Graphics::GraphicsDevice& device)
 	}
 }
 
-void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride)
+void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT vertexCount, UINT stride, FORMAT format)
 {
+	m_vertexCount = vertexCount;
+	m_vertexStride = stride;
+	m_vertexFormat = format;
+
+	UINT size = vertexCount * stride;	
+
 	device.CreateBlob(size, &m_vertexBufferCPU);
 	CopyMemory(m_vertexBufferCPU.m_blob->GetBufferPointer(), data, size);
 
@@ -53,7 +59,8 @@ void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UIN
 		ZeroMemory(&bd, sizeof(bd));
 		bd.Usage = USAGE_DEFAULT;
 		bd.ByteWidth = (UINT)size;
-		bd.BindFlags = BIND_VERTEX_BUFFER;
+		bd.BindFlags = BIND_VERTEX_BUFFER | (device.SupportRayTracing() ? BIND_SHADER_RESOURCE : 0);
+		bd.MiscFlags = device.SupportRayTracing() ? RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS : 0;
 		bd.CpuAccessFlags = 0;
 		bd.StructureByteStride = stride;
 
@@ -69,8 +76,13 @@ void Mesh::CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UIN
 	}
 }
 
-void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, FORMAT format)
+void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT indexCounts, INDEXBUFFER_FORMAT format)
 {
+	m_indexCount = indexCounts;
+	m_indexFormat = format;
+
+	UINT size = indexCounts * (format == INDEXFORMAT_16BIT ? sizeof(UINT16) : sizeof(UINT32));
+
 	device.CreateBlob(size, &m_indexBufferCPU);
 	CopyMemory(m_indexBufferCPU.m_blob->GetBufferPointer(), data, size);
 
@@ -80,10 +92,11 @@ void Mesh::CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT
 		ZeroMemory(&bd, sizeof(bd));
 		bd.Usage = USAGE_DEFAULT;
 		bd.ByteWidth = (UINT)size;
-		bd.BindFlags = BIND_INDEX_BUFFER;
+		bd.BindFlags = BIND_INDEX_BUFFER | (device.SupportRayTracing() ? BIND_SHADER_RESOURCE : 0);;
+		bd.MiscFlags = device.SupportRayTracing() ? RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS : 0;
 		bd.CpuAccessFlags = 0;
-		bd.Format = format;
-		bd.StructureByteStride = sizeof(UINT16);
+		bd.Format = format == INDEXFORMAT_16BIT ? FORMAT_R16_UINT : FORMAT_R32_UINT;
+		bd.StructureByteStride = format == INDEXFORMAT_16BIT ? sizeof(UINT16) : sizeof(UINT32);
 
 		m_indexBufferGPU.m_desc = bd;
 
@@ -147,7 +160,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 	}
 
 	UINT stride = sizeof(Vertex);
-	CreateVertexBuffers(device, vertices.data(), vertices.size()*(UINT64)stride, stride);
+	CreateVertexBuffers(device, vertices.data(), (UINT)vertices.size(), stride, FORMAT_R32G32B32_FLOAT);
 
 	std::vector<UINT> indices;
 	indices.reserve(mesh->mNumFaces * 3);
@@ -160,7 +173,7 @@ Mesh::Mesh(Graphics::GraphicsDevice& device, const aiMesh* mesh)
 		indices.push_back(mesh->mFaces[i].mIndices[2]);
 	}
 
-	CreateIndexBuffers(device, indices.data(), indices.size() * (UINT64)sizeof(UINT), FORMAT_R32_UINT);
+	CreateIndexBuffers(device, indices.data(), (UINT)indices.size(), INDEXFORMAT_32BIT);
 
 	Submesh submesh;
 	submesh.IndexCount = (UINT)indices.size();

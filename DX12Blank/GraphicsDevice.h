@@ -17,6 +17,7 @@ namespace Graphics
 		GraphicsDevice()
 			: m_isInitialized(false)
 			, m_frameIndex(0)
+			, m_shaderIdentifierSize(0)
 		{}
 		virtual ~GraphicsDevice() {};
 
@@ -44,6 +45,7 @@ namespace Graphics
 		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) = 0;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) = 0;
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
+		virtual void BindRayTracePSO(RayTracePSO* pso) = 0;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
 		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) = 0;
 		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
@@ -55,6 +57,7 @@ namespace Graphics
 		virtual void DrawIndexedInstanced(int indexCount, int instanceCount, UINT startIndexLocation, UINT baseVertexLocation, UINT startInstanceLocation) = 0;
 
 		virtual void Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ) = 0;
+		virtual void DispatchRays(const DispatchRaysDesc& desc) = 0;
 
 		virtual void CreateBlob(UINT64 byteSize, CPUBuffer* buffer) = 0;
 		virtual void CreateBuffer(const GPUBufferDesc& desc, const SubresourceData* initialData, GPUBuffer* buffer) = 0;
@@ -63,10 +66,15 @@ namespace Graphics
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) = 0;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) = 0;
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) = 0;
+		virtual void CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso) = 0;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) = 0;
+		virtual void CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh) = 0;
+		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb) = 0;
 
-		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) = 0;
+		virtual void TransitionBarrier(GPUResource* resource, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) = 0;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) = 0;
+		virtual void TransitionMemoryBarrier(GPUResource* resource) = 0;
+		virtual void TransitionMemoryBarriers(GPUResource* const* resources, UINT numBarriers) = 0;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) = 0;
 		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) = 0;
@@ -83,17 +91,40 @@ namespace Graphics
 		virtual void* Map(const GPUBuffer* buffer) = 0;
 		virtual void Unmap(const GPUBuffer* buffer) = 0;
 
+		struct GPUAllocation
+		{
+			void*			 m_data;
+			UINT64			 m_gpuAddress;
+			uint32_t		 m_offset;
+
+			GPUAllocation()
+				: m_data(nullptr)
+				, m_gpuAddress(0)
+				, m_offset(0)
+			{}
+			inline bool IsValid() const { return m_data != nullptr && m_gpuAddress != 0; }
+		};
+		virtual GPUAllocation AllocateGPU(size_t dataSize) = 0;
+
 		virtual void BeginProfilerBlock(const char* name) = 0;
 		virtual void EndProfilerBlock() = 0;
 		virtual void SetMarker(const char* name) = 0;
 
 		virtual void FlushUI() = 0;
 
+		virtual bool UseRayTracing() = 0;
+		virtual bool SupportRayTracing() = 0;
+		virtual void EnableRayTracing(bool enable) = 0;
+
+		virtual void WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const = 0;
+
 		inline bool IsInitialized() const { return m_isInitialized; }
 		inline UINT32 GetCurrentFrameIndex() const { return m_frameIndex; }
+		inline size_t GetShaderIdentifierSize() const { return m_shaderIdentifierSize; }
 
 	protected:
 		bool								m_isInitialized;
 		UINT32								m_frameIndex;
+		size_t								m_shaderIdentifierSize;
 	};
 }

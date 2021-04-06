@@ -41,6 +41,14 @@ enum eCPSO
 	CPSO_MAX,
 };
 
+enum eRTPSO
+{
+	PBRSimpleSolidRT,
+	PBRSolidRT,
+
+	RTPSO_MAX,
+};
+
 class PSOCache
 {
 public:
@@ -52,11 +60,14 @@ public:
 
 	inline Graphics::GraphicsPSO* GetPSO(eGPSO pso) const { return m_cacheGraphics[pso].get(); }
 	inline Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_cacheCompute[pso].get(); }
+	inline Graphics::RayTracePSO* GetPSO(eRTPSO pso) const { return m_cacheRayTrace[pso].get(); }
 
 private:
 	void InitializeGraphics( Graphics::GraphicsDevice& device );
 	void InitializeCompute( Graphics::GraphicsDevice& device );
+	void InitializeRayTrace(Graphics::GraphicsDevice& device);
 
 	std::vector<std::unique_ptr<Graphics::GraphicsPSO>> m_cacheGraphics;
 	std::vector<std::unique_ptr<Graphics::ComputePSO>> m_cacheCompute;
+	std::vector<std::unique_ptr<Graphics::RayTracePSO>> m_cacheRayTrace;
 };

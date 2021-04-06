@@ -40,6 +40,9 @@
     <Filter Include="Engine\Graphics\GpuApi\Vulkan">
       <UniqueIdentifier>{2d794117-a038-445a-8f09-625487fa28bb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\Shaders\RayTracing">
+      <UniqueIdentifier>{ebd38c5b-1b93-4e3b-965a-739079e6d19a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -207,6 +210,9 @@
     <ClInclude Include="AmbientOcclusion.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="ShaderTableCache.h">
+      <Filter>Engine\Graphics</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseWindow.cpp">
@@ -329,6 +335,9 @@
     <ClCompile Include="AmbientOcclusion.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderTableCache.cpp">
+      <Filter>Engine\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -397,6 +406,15 @@
     </None>
     <None Include="Shaders\Blur.hlsl">
       <Filter>Engine\Graphics\Shaders</Filter>
+    </None>
+    <None Include="Shaders\RayTracing\RTCommon.hlsl">
+      <Filter>Engine\Graphics\Shaders\RayTracing</Filter>
+    </None>
+    <None Include="Shaders\RayTracing\PBRMaterialSimpleRT.hlsl">
+      <Filter>Engine\Graphics\Shaders\RayTracing</Filter>
+    </None>
+    <None Include="Shaders\RayTracing\PBRMaterialRT.hlsl">
+      <Filter>Engine\Graphics\Shaders\RayTracing</Filter>
     </None>
   </ItemGroup>
 </Project>

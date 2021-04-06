@@ -13,10 +13,11 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
 
-#define PBR_MODEL 0
+#define PBR_MODEL 1
 
 CreviceWindow::CreviceWindow(std::string name)
 	: BaseWindow(name)
+	, m_modelID(EModelType::EMT_Sphere)
 {
 }
 
@@ -34,6 +35,8 @@ void CreviceWindow::OnInit()
 	InitializeTextures();
 	InitializeMesh();
 	InitializeRenderObjects();
+	if (GetDevice().SupportRayTracing())
+		InitializeRayTracingAccelerationStructure();
 	GetDevice().PresentEnd();
 
 	Renderer::GGraphicsDevice->Flush();
@@ -42,6 +45,8 @@ void CreviceWindow::OnInit()
 void CreviceWindow::OnUpdate()
 {
 	BaseWindow::OnUpdate();
+
+	GetDevice().EnableRayTracing(UIContext::UseRayTracing);
 }
 
 void CreviceWindow::OnRender()
@@ -57,6 +62,18 @@ void CreviceWindow::OnRender()
 			RenderObject& ro = m_renderObjects[id];
 			UIContext::ShowObjectSettings(ro);
 			ro.SetWorld();
+		}
+	}
+
+	if (GetDevice().UseRayTracing())
+	{
+		if (m_modelID != UIContext::PBRModel)
+		{
+			GetDevice().Flush();
+
+			m_modelID = (EModelType)UIContext::PBRModel;
+			delete m_rtAccelerationStructure;
+			InitializeRayTracingAccelerationStructure();
 		}
 	}
 
@@ -88,11 +105,46 @@ void CreviceWindow::OnRender()
 			}
 		}
 
+		if (GetDevice().UseRayTracing())
+		{
+			ScopedTimer perf("Rendering Objects Ray Tracing", Renderer::GGraphicsDevice);
+
+#if PBR_MODEL
+			GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0);
+			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_vertexBufferGPU, 1);
+			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_indexBufferGPU, 2);
+			GetRenderer().BindGBufferUAV();
+			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_rayTracedGBufferCB, 0);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_objPsCB, 1);
+			GetDevice().BindSampler(SHADERSTAGE::RGS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
+
+			const RenderObject& model = m_model[UIContext::PBRModel];
+			UpdateObjectConstantBuffer(model, 1);
+
+			GPUResource* textures[] = {
+				m_textures[ETT_Albedo],
+				m_textures[ETT_Normal],
+				m_textures[ETT_Roughness],
+				m_textures[ETT_Metalness],
+			};
+			GetDevice().BindResources(SHADERSTAGE::RGS, textures, 3, 4);
+
+			eRTPSO pso = UIContext::PBRModel == 0 ? eRTPSO::PBRSimpleSolidRT : eRTPSO::PBRSolidRT;
+			RayTracePSO* rtpso = GetRenderer().GetPSO(pso);
+			GetDevice().BindRayTracePSO(rtpso);
+
+			GetRenderer().RenderRayTracedObjects(pso);
+			
+			GetRenderer().BindGBufferUAV(false);
+#else
+			// TODO: implement pbr objects
+#endif
+		}
+		else
 		{
 			ScopedTimer perf("Rendering Objects", Renderer::GGraphicsDevice);
 
 			GetRenderer().SetGBuffer(true);
-			GetRenderer().BindIBL();
 
 			// render objects
 			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
@@ -162,6 +214,8 @@ void CreviceWindow::OnRender()
 			GetDevice().BindConstantBuffer(SHADERSTAGE::VS, m_objVsCB, 0);
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_shadingCB, 0);
 			GetDevice().BindConstantBuffer(SHADERSTAGE::PS, m_backgroundCB, 1);
+
+			GetRenderer().BindIBL();
 
 			GetRenderer().RenderLighting();
 		}
@@ -279,6 +333,8 @@ void CreviceWindow::OnRender()
 
 void CreviceWindow::OnDestroy()
 {
+	Renderer::GGraphicsDevice->Flush();
+
 	// PBR Model
 	for (int i = 0; i < ETT_Max; ++i)
 		delete m_textures[i];
@@ -288,6 +344,9 @@ void CreviceWindow::OnDestroy()
 	delete m_objPsCB;
 	delete m_shadingCB;
 	delete m_backgroundCB;
+	delete m_rayTracedGBufferCB;
+	if(m_rtAccelerationStructure)
+		delete m_rtAccelerationStructure;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -414,11 +473,11 @@ void CreviceWindow::AddObject(eObject id, float a, float b, float c, float d, fl
 			break;
 		}
 
-		const UINT vbByteSize = (UINT)obj.Vertices.size() * sizeof(GeometryGenerator::Vertex);
-		const UINT ibByteSize = (UINT)obj.Indices32.size() * sizeof(UINT16);
+		const UINT vertexCount = (UINT)obj.Vertices.size();
+		const UINT indexCount = (UINT)obj.Indices32.size();
 
-		ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vbByteSize, sizeof(GeometryGenerator::Vertex));
-		ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), ibByteSize, FORMAT_R16_UINT);
+		ro.m_mesh->CreateVertexBuffers(GetDevice(), obj.Vertices.data(), vertexCount, sizeof(GeometryGenerator::Vertex), FORMAT_R32G32B32_FLOAT);
+		ro.m_mesh->CreateIndexBuffers(GetDevice(), obj.GetIndices16().data(), indexCount, INDEXFORMAT_16BIT);
 
 		Submesh submesh;
 		submesh.IndexCount = (UINT)obj.Indices32.size();
@@ -472,6 +531,9 @@ void CreviceWindow::InitializeMesh()
 {
 	m_model[EMT_Sphere].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/sphere.obj");
 	m_model[EMT_Sphere].SetScale(0.1f, 0.1f, 0.1f);
+	m_model[EMT_Sphere].SetColor(0.5f, 0.5f, 0.5f);
+	m_model[EMT_Sphere].SetRoughness(0.0f);
+	m_model[EMT_Sphere].SetMetalness(1.0f);
 
 	m_model[EMT_Cerberus].m_mesh = Mesh::FromFile(GetDevice(), "Data/Meshes/cerberus.fbx");
 	m_model[EMT_Cerberus].SetScale(0.1f, 0.1f, 0.1f);
@@ -553,6 +615,71 @@ void CreviceWindow::InitializeConstantBuffers()
 		GetDevice().CreateBuffer(bd, &initData, m_backgroundCB);
 		GetDevice().TransitionBarrier(m_backgroundCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
+
+	if (m_rayTracedGBufferCB == nullptr)
+	{
+		m_rayTracedGBufferCB = new Graphics::GPUBuffer();
+
+		RayTracedGBufferCB rayTracedGBufferCB;
+		ZeroMemory(&rayTracedGBufferCB, sizeof(rayTracedGBufferCB));
+
+		GPUBufferDesc bd;
+		bd.BindFlags = BIND_CONSTANT_BUFFER;
+		bd.Usage = USAGE_DEFAULT;
+		bd.CpuAccessFlags = 0;
+		bd.ByteWidth = sizeof(RayTracedGBufferCB);
+		SubresourceData initData;
+		initData.SysMem = &rayTracedGBufferCB;
+		GetDevice().CreateBuffer(bd, &initData, m_rayTracedGBufferCB);
+		GetDevice().TransitionBarrier(m_rayTracedGBufferCB, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_GENERIC_READ);
+	}
+}
+
+void CreviceWindow::InitializeRayTracingAccelerationStructure()
+{
+	m_rtAccelerationStructure = new RayTracingAccelerationStructure();
+
+#if PBR_MODEL
+	const RenderObject& ro = m_model[UIContext::PBRModel];
+	Mesh* mesh = ro.m_mesh.get();
+
+	RayTracingAccelerationStructureDesc desc;
+	desc.Flags = AS_BUILD_FLAG_PREFER_FAST_TRACE;
+	
+	// Geometry Desc
+	RayTracingAccelerationStructureDesc::BottomLevelAccelerationStructure::Geometry& geometry = desc.BottomLevelAS.Geometries.emplace_back();
+	geometry.Type = AS_BOTTOM_LEVEL_GEOMETRY_TYPE_TRIANGLES;
+	geometry.Flags = AS_BOTTOM_LEVEL_GEOMETRY_FLAG_OPAQUE;
+	geometry.Triangles.VertexBufferGPUVirtualAddress = mesh->m_vertexBufferGPU.m_resource->GetGPUVirtualAddress();
+	geometry.Triangles.VertexStride = mesh->m_vertexStride;
+	geometry.Triangles.VertexCount = mesh->m_vertexCount;
+	geometry.Triangles.VertexFormat = mesh->m_vertexFormat;
+	geometry.Triangles.IndexBufferGPUVirtualAddress = mesh->m_indexBufferGPU.m_resource->GetGPUVirtualAddress();
+	geometry.Triangles.IndexCount = mesh->m_indexCount;
+	geometry.Triangles.IndexFormat = mesh->m_indexFormat;	
+	
+	// Bottom Level
+	desc.Type = AS_TYPE_BOTTOMLEVEL;
+	GetDevice().TransitionBarrier(&mesh->m_vertexBufferGPU, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, RESOURCE_STATE_GENERIC_READ);
+	GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
+
+	// Instance Desc
+	RayTracingAccelerationStructureDesc::TopLevelAccelerationStructure::Instance& instance = desc.TopLevelAS.Instances.emplace_back();
+	const float4x4& world = ro.GetWorld();
+	instance.Transform = XMFLOAT3X4(
+		world._11, world._21, world._31, world._41,
+		world._12, world._22, world._32, world._42,
+		world._13, world._23, world._33, world._43
+	);
+	instance.InstanceID = 0;
+	instance.InstanceMask = 0xFF;
+	instance.InstanceContributionToHitGroupIndex = 0;
+
+	// Top Level
+	desc.Type = AS_TYPE_TOPLEVEL;
+	GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
+#else
+#endif
 }
 
 void CreviceWindow::UpdateGlobalConstantBuffer()
@@ -615,6 +742,26 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 		}
 
 		GetDevice().UpdateBuffer(m_backgroundCB, &backgroundCB, sizeof(BackgroundConstants));
+	}
+
+	if (m_rayTracedGBufferCB != nullptr)
+	{
+		RayTracedGBufferCB rayTracedGBufferCB;
+		ZeroMemory(&rayTracedGBufferCB, sizeof(rayTracedGBufferCB));
+
+		{
+			const Camera* cam = GetCamera();
+
+			XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
+			XMStoreFloat4x4(&rayTracedGBufferCB.View, view);
+
+			XMVECTOR eyePos = XMLoadFloat3(&cam->m_eyePos);
+			XMStoreFloat4(&rayTracedGBufferCB.EyePos, eyePos);
+
+			rayTracedGBufferCB.ResolutionTanHalfFovYAndAspectRatio = float4((float)GetWidth(), (float)GetHeight(), tanf(0.5f * cam->m_fov), m_aspectRatio);
+		}
+
+		GetDevice().UpdateBuffer(m_rayTracedGBufferCB, &rayTracedGBufferCB, sizeof(RayTracedGBufferCB));
 	}
 }
 

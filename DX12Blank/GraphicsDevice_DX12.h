@@ -56,6 +56,7 @@ namespace Graphics
 		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) override;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
+		virtual void BindRayTracePSO(RayTracePSO* pso) override;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
 		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
@@ -67,6 +68,7 @@ namespace Graphics
 		virtual void DrawIndexedInstanced(int indexCount, int instanceCount, UINT startIndexLocation, UINT baseVertexLocation, UINT startInstanceLocation) override;
 
 		virtual void Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ) override;
+		virtual void DispatchRays(const DispatchRaysDesc& desc) override;
 
 		virtual void CreateBlob(UINT64 byteSize, CPUBuffer* buffer) override;
 		virtual void CreateBuffer(const GPUBufferDesc& desc, const SubresourceData* initialData, GPUBuffer* buffer) override;
@@ -75,10 +77,15 @@ namespace Graphics
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) override;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) override;
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) override;
+		virtual void CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso) override;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) override;
+		virtual void CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh) override;
+		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb) override;
 
 		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) override;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
+		virtual void TransitionMemoryBarrier(GPUResource* resource) override;
+		virtual void TransitionMemoryBarriers(GPUResource* const* resources, UINT numBarriers) override;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) override;
 		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) override;
@@ -95,15 +102,24 @@ namespace Graphics
 		virtual void* Map(const GPUBuffer* buffer) override;
 		virtual void Unmap(const GPUBuffer* buffer) override;
 
+		virtual GPUAllocation AllocateGPU(size_t dataSize) override;
+
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();
 		virtual void SetMarker(const char* name);
 
 		virtual void FlushUI() override;
 
+		virtual bool UseRayTracing() override { return m_useRayTracing && m_rayTracingSupported; }
+		virtual bool SupportRayTracing() override { return m_rayTracingSupported; }
+		virtual void EnableRayTracing(bool enable) override { m_useRayTracing = enable; }
+
+		virtual void WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const override;
+
 	private:
 		void GetHardwareAdapter( IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter );
 		bool CheckTearingSupport(ComPtr<IDXGIFactory4> factory4);
+		bool CheckRayTracingSupport(ComPtr<ID3D12Device> device);
 		void UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap, UINT n);
 		void UpdateDepthStencil(ComPtr<ID3D12Device> device, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT backBufferWidth, UINT backBufferHeight);
 		void UpdateViewportAndScissor(UINT backBufferWidth, UINT backBufferHeight);
@@ -121,9 +137,11 @@ namespace Graphics
 		HANDLE CreateEventHandle();
 
 		void CreateNullResources(ComPtr<ID3D12Device> device);
-		
+		void CreateEmptyRootSignature(ComPtr<ID3D12Device> device);
+
 		void SetupForDraw();
 		void SetupForDispatch();
+		void SetupForDispatchRays();
 
 		inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return Frames[m_frameIndex].GetCommandList(); }
 		inline UINT64 GetFenceValue() { return Frames[m_frameIndex].GetFenceValue(); }
@@ -138,9 +156,13 @@ namespace Graphics
 		ComPtr<ID3D12DescriptorHeap>		m_rtvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_srvUIHeap;
+		ComPtr<ID3D12DescriptorHeap>		m_rtxCbvSrvUavHeap;
+		ComPtr<ID3D12DescriptorHeap>		m_rtxSamplerHeap;
 
 		ComPtr<ID3D12RootSignature>			m_graphicsRootSig;
 		ComPtr<ID3D12RootSignature>			m_computeRootSig;
+		ComPtr<ID3D12RootSignature>			m_emptyGlobalRootSig;
+
 
 		D3D12_CPU_DESCRIPTOR_HANDLE*		m_nullSampler;
 		D3D12_CPU_DESCRIPTOR_HANDLE*		m_nullCBV;
@@ -164,6 +186,10 @@ namespace Graphics
 		UINT32								m_dsvDescriptorSize;
 		UINT32								m_cbvSrvUavDescriptorSize;
 
+		// RayTracing infrastructure
+		bool								m_rayTracingSupported;
+		bool								m_useRayTracing;
+
 		struct FrameResources
 		{
 			ComPtr<ID3D12Resource>				m_backBuffer;
@@ -184,7 +210,7 @@ namespace Graphics
 				UINT							m_itemSize;
 				UINT							m_itemCount;
 				UINT							m_ringOffset;
-				bool							m_isDirty[SHADERSTAGE_MAX];
+				bool							m_isDirty[SHADERSTAGE::CS+1];
 				D3D12_CPU_DESCRIPTOR_HANDLE**	m_boundDescriptors;
 
 				DescriptorTableFrameAllocator(ComPtr<ID3D12Device> device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT maxRenameCount);

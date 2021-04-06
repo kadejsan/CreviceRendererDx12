@@ -53,7 +53,7 @@ void RenderTarget::Initialize(UINT width, UINT height, bool hasDepth /*= false*/
 		textureDesc.SampleDesc.Count = MSAAC;
 		//textureDesc.SampleDesc.Quality = 0; // auto-fill in device to maximum
 		textureDesc.Usage = USAGE_DEFAULT;
-		textureDesc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE;
+		textureDesc.BindFlags = BIND_RENDER_TARGET | BIND_SHADER_RESOURCE | BIND_UNORDERED_ACCESS;
 		textureDesc.CPUAccessFlags = 0;
 		textureDesc.MiscFlags = 0;
 		textureDesc.ClearDepth = 1.0f;
@@ -266,6 +266,20 @@ void RenderTarget::Set(DepthTarget* getDepth, bool disableColor /*= false*/, int
 		{
 			x = false;
 		}
+	}
+}
+
+void RenderTarget::Clear()
+{
+	float clearColor[4] = { 0, 0, 0, 0 };
+	for (int i = 0; i < m_numViews; ++i)
+	{
+		Renderer::GetDevice()->ClearRenderTarget(GetTexture(i), clearColor);
+	}
+
+	if (m_depth)
+	{
+		m_depth->Clear();
 	}
 }
 

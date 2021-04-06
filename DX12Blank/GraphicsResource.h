@@ -10,7 +10,7 @@ namespace Graphics
 	class GPUResource
 	{
 	public:
-		ComPtr< ID3D12Resource >		m_resource;
+		ComPtr< ID3D12Resource >				  m_resource;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE*			  m_srv;
 		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE*> m_additionalSRVs;
@@ -188,6 +188,31 @@ namespace Graphics
 		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::CS; }
 	};
 
+	class RayGenerationShader : public BaseShader
+	{
+		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::RGS; }
+	};
+
+	class RayMissShader : public BaseShader
+	{
+		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::MS; }
+	};
+
+	class RayClosestHitShader : public BaseShader
+	{
+		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::CHS; }
+	};
+
+	class RayAnyHitShader : public BaseShader
+	{
+		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::AHS; }
+	};
+
+	class RayIntersectionShader : public BaseShader
+	{
+		virtual SHADERSTAGE GetShaderStage() const { return SHADERSTAGE::IS; }
+	};
+
 	// - - - - - - - - - - - - - - - - - - - - - - - -
 
 	class Sampler
@@ -254,6 +279,54 @@ namespace Graphics
 
 	// - - - - - - - - - - - - - - - - - - - - - - - -
 
+	class HitGroup
+	{
+	public:
+		HitGroupDesc m_desc;
+
+	public:
+		HitGroup() {};
+		~HitGroup() {};
+
+		HitGroupDesc& GetDesc() { return m_desc; }
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
+	class RayTracingAccelerationStructure
+	{
+	public:
+		GPUBuffer*		m_BLASResult;
+		GPUBuffer*		m_BLASScratch;
+		GPUBuffer*		m_TLASResult;
+		GPUBuffer*		m_TLASScratch;
+		GPUBuffer*		m_instanceDesc;
+
+		RayTracingAccelerationStructureDesc m_desc;
+	public:
+
+		const RayTracingAccelerationStructureDesc& GetDesc() const { return m_desc; }
+
+		RayTracingAccelerationStructure()
+			: m_BLASResult(nullptr)
+			, m_BLASScratch(nullptr)
+			, m_TLASResult(nullptr)
+			, m_TLASScratch(nullptr)
+			, m_instanceDesc(nullptr)
+		{}
+
+		~RayTracingAccelerationStructure() 
+		{
+			delete m_BLASResult;
+			delete m_BLASScratch;
+			delete m_TLASResult;
+			delete m_TLASScratch;
+			delete m_instanceDesc;
+		}
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
 	class GraphicsPSO
 	{
 	public:
@@ -278,5 +351,32 @@ namespace Graphics
 
 		ComputePSO() {};
 		~ComputePSO() {};
+	};
+
+	class RayTracePSO
+	{
+	public:
+		ComPtr<ID3D12StateObject>			m_pso;
+		ComPtr<ID3D12StateObjectProperties> m_rtpsoInfo;
+		RayTracePSODesc						m_desc;
+
+	public:
+		const RayTracePSODesc& GetDesc() const { return m_desc; }
+		RayTracePSO() {};
+		~RayTracePSO() {};
+	};
+
+	// - - - - - - - - - - - - - - - - - - - - - - - -
+
+	class ShaderTable
+	{
+	public:
+		ComPtr<ID3D12Resource>	m_shaderTable;
+		UINT					m_shaderTableRecordSize;
+
+	public:
+		ShaderTable()
+			: m_shaderTableRecordSize(0)
+		{}
 	};
 }

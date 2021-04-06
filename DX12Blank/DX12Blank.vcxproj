@@ -22,32 +22,32 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{7782939A-DC99-49A3-9328-5EAC28F7AA93}</ProjectGuid>
     <RootNamespace>DX12Blank</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -83,14 +83,20 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;$(ProjectDir)Lib\vulkan\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
       <AdditionalLibraryDirectories>$(ProjectDir)Lib\assimp\win64;$(ProjectDir)Lib\vulkan\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d  "$(ProjectDir)Lib\assimp\win64\*.dll" "$(TargetDir)"
+xcopy /y /d  "$(ProjectDir)Lib\dxc\*.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -113,17 +119,21 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <ConformanceMode>true</ConformanceMode>
+      <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Lib\assimp\include;$(ProjectDir)Lib\stb\include;$(ProjectDir)Lib\imgui\include;$(ProjectDir)Lib\vulkan\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <DelayLoadDLLs>d3d12.dll</DelayLoadDLLs>
-      <AdditionalLibraryDirectories>$(ProjectDir)Lib\assimp\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Lib\assimp\win64;$(ProjectDir)Lib\vulkan\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /d  "$(ProjectDir)Lib\assimp\win64\*.dll" "$(TargetDir)"
+xcopy /y /d  "$(ProjectDir)Lib\dxc\*.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
@@ -170,6 +180,7 @@
     <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="SamplerCache.h" />
     <ClInclude Include="ShaderInterop_Vulkan.h" />
+    <ClInclude Include="ShaderTableCache.h" />
     <ClInclude Include="SpinLock.h" />
     <ClInclude Include="AmbientOcclusion.h" />
     <ClInclude Include="stdafx.h" />
@@ -217,6 +228,7 @@
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="SamplerCache.cpp" />
     <ClCompile Include="AmbientOcclusion.cpp" />
+    <ClCompile Include="ShaderTableCache.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
     <ClCompile Include="ThreadSafeManager.cpp" />
@@ -326,6 +338,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Blur.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RTCommon.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\RayTracing\PBRMaterialSimpleRT.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\PBRMaterialRT.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

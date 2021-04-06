@@ -26,3 +26,9 @@ float3 PositionFromDepth(in float depth, in float2 pixelCoord, float aspectRatio
 	positionWS /= positionWS.w;
 	return positionWS.xyz;
 }
+
+float3 CompressNormalsToUnsignedGBuffer(float3 vNormal)
+{
+	const float maxXYZ = max(abs(vNormal.x), max(abs(vNormal.y), abs(vNormal.z)));
+	return vNormal / maxXYZ * 0.5 + 0.5;
+}

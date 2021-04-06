@@ -1396,6 +1396,11 @@ namespace Graphics
 
 	}
 
+	void GraphicsDevice_Vulkan::BindRayTracePSO(RayTracePSO* pso)
+	{
+
+	}
+
 	void GraphicsDevice_Vulkan::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
 	{
 
@@ -1441,6 +1446,11 @@ namespace Graphics
 
 	}
 
+	void GraphicsDevice_Vulkan::DispatchRays(const DispatchRaysDesc& desc)
+	{
+
+	}
+
 	void GraphicsDevice_Vulkan::CreateBlob(UINT64 byteSize, CPUBuffer* buffer)
 	{
 
@@ -1476,7 +1486,17 @@ namespace Graphics
 
 	}
 
+	void GraphicsDevice_Vulkan::CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso)
+	{
+
+	}
+
 	void GraphicsDevice_Vulkan::CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState)
+	{
+
+	}
+
+	void GraphicsDevice_Vulkan::CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh)
 	{
 
 	}
@@ -1487,6 +1507,16 @@ namespace Graphics
 	}
 
 	void GraphicsDevice_Vulkan::TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter)
+	{
+
+	}
+
+	void GraphicsDevice_Vulkan::TransitionMemoryBarrier(GPUResource* resource)
+	{
+
+	}
+
+	void GraphicsDevice_Vulkan::TransitionMemoryBarriers(GPUResource* const* resources, UINT numBarriers)
 	{
 
 	}
@@ -1546,6 +1576,12 @@ namespace Graphics
 
 	}
 
+	Graphics::GraphicsDevice::GPUAllocation GraphicsDevice_Vulkan::AllocateGPU(size_t dataSize)
+	{
+		GPUAllocation result;
+		return result;
+	}
+
 	void GraphicsDevice_Vulkan::BeginProfilerBlock(const char* name)
 	{
 
@@ -1562,6 +1598,13 @@ namespace Graphics
 	}
 
 	void GraphicsDevice_Vulkan::FlushUI()
+	{
+
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	void GraphicsDevice_Vulkan::WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const
 	{
 
 	}

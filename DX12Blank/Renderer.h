@@ -4,6 +4,7 @@
 #include "GraphicsEnums.h"
 #include "PSOCache.h"
 #include "SamplerCache.h"
+#include "ShaderTableCache.h"
 #include "RenderTarget.h"
 #include "AmbientOcclusion.h"
 
@@ -18,9 +19,13 @@ public:
 
 	PSOCache					  m_psoCache;
 	SamplerCache				  m_samplerCache;
+	ShaderTableCache			  m_stbCache;
 
 	inline Graphics::GraphicsPSO* GetPSO(eGPSO pso, bool wireframe = false) const { return m_psoCache.GetPSO((eGPSO)(pso + (wireframe ? 1 : 0))); }
 	inline Graphics::ComputePSO* GetPSO(eCPSO pso) const { return m_psoCache.GetPSO(pso); }
+	inline Graphics::RayTracePSO* GetPSO(eRTPSO pso) const { return m_psoCache.GetPSO(pso); }
+	
+	inline Graphics::ShaderTable* GetSTB(eRTPSO pso) const { return m_stbCache.GetSTB(pso); }
 
 	inline Graphics::Sampler* GetSamplerState(eSamplerState state) const { return m_samplerCache.GetSamplerState(state); }
 
@@ -31,11 +36,15 @@ public:
 
 	void InitializePSO();
 
+	DispatchRaysDesc InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth);
+	void RenderRayTracedObjects(eRTPSO pso);
+
 	void InitializeHitProxyBuffers();
 	void InitializeIBLTextures(const std::string& name);
 
 	void BindIBL();
 	void BindGBuffer();
+	void BindGBufferUAV(bool set = true);
 	void BindEnvTexture(SHADERSTAGE stage, int slot);
 	void BindShadowMap();
 

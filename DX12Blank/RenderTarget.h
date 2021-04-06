@@ -38,6 +38,8 @@ public:
 	void Set(bool disableColor = false, int viewID = -1);
 	void Set(DepthTarget* getDepth, bool disableColor = false, int viewID = -1);
 
+	void Clear();
+
 	Texture2D* GetTexture(int viewID = 0) const { return m_renderTargets[viewID]; }
 	Texture2D* GetDepthTexture() const { return m_depth->GetTexture(); }
 	Texture2D* GetTextureResolvedMSAA(int viewID = 0);

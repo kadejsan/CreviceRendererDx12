@@ -120,7 +120,7 @@ uint querySpecularTextureLevels()
 
 float IsSky(float depth)
 {
-	return depth < 1.0f;
+	return depth == 1.0f;
 }
 
 float2 TexOffset(int u, int v)
@@ -139,55 +139,60 @@ float GetShadow(float3 posWS)
 	//results in hard light frustum
 	if (lpos.x < -1.0f || lpos.x > 1.0f ||
 		lpos.y < -1.0f || lpos.y > 1.0f ||
-		lpos.z < 0.0f || lpos.z > 1.0f) return 1.0f;
+		lpos.z < 0.0f || lpos.z > 1.0f)
+	{
+		return 1.0f;
+	}
+	else
+	{
+		//transform clip space coords to texture space coords (-1:1 to 0:1)
+		lpos.x = lpos.x / 2.0f + 0.5f;
+		lpos.y = -lpos.y / 2.0f + 0.5f;
 
-	//transform clip space coords to texture space coords (-1:1 to 0:1)
-	lpos.x = lpos.x / 2.0f + 0.5f;
-	lpos.y = -lpos.y / 2.0f + 0.5f;
-
-	const float bias = 0.001f;
-	lpos.z -= bias;
+		const float bias = 0.001f;
+		lpos.z -= bias;
 
 #if 0
-	//PCF sampling for shadow map
-	float sum = 0;
-	float x, y;
-	float samples = 0.0f;
-	const float range = 2.5f;
+		//PCF sampling for shadow map
+		float sum = 0;
+		float x, y;
+		float samples = 0.0f;
+		const float range = 2.5f;
 
-	// perform PCF filtering on a n x n texel neighborhood
-	for (y = -range; y <= range; y += 1.0)
-	{
-		for (x = -range; x <= range; x += 1.0)
+		// perform PCF filtering on a n x n texel neighborhood
+		for (y = -range; y <= range; y += 1.0)
 		{
-			sum += ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + TexOffset(x, y), lpos.z);
-			samples++;
+			for (x = -range; x <= range; x += 1.0)
+			{
+				sum += ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + TexOffset(x, y), lpos.z);
+				samples++;
+			}
 		}
-	}
-	float shadowFactor = sum / samples;
+		float shadowFactor = sum / samples;
 #else
-	// Cheaper (smarter) version
-	const float dilation = 2.0;
-	const float shadowTexelSize = 1.0f / 1024.0f;
-	float d1 = dilation * shadowTexelSize * 0.125;
-	float d2 = dilation * shadowTexelSize * 0.875;
-	float d3 = dilation * shadowTexelSize * 0.625;
-	float d4 = dilation * shadowTexelSize * 0.375;
-	float result = (
-		2.0 * ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy, lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d2, d1), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d1, -d2), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d2, -d1), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d1, d2), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d4, d3), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d3, -d4), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d4, -d3), lpos.z) +
-		ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d3, d4), lpos.z)
-		) / 10.0;
-	float shadowFactor = result * result;
+		// Cheaper (smarter) version
+		const float dilation = 2.0;
+		const float shadowTexelSize = 1.0f / 1024.0f;
+		float d1 = dilation * shadowTexelSize * 0.125;
+		float d2 = dilation * shadowTexelSize * 0.875;
+		float d3 = dilation * shadowTexelSize * 0.625;
+		float d4 = dilation * shadowTexelSize * 0.375;
+		float result = (
+			2.0 * ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy, lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d2, d1), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d1, -d2), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d2, -d1), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d1, d2), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d4, d3), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(-d3, -d4), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d4, -d3), lpos.z) +
+			ShadowMap.SampleCmpLevelZero(ShadowMapSampler, lpos.xy + float2(d3, d4), lpos.z)
+			) / 10.0;
+		float shadowFactor = result * result;
 #endif
 
-	return shadowFactor;
+		return shadowFactor;
+	}
 }
 
 float4 ps_main(PixelShaderInput pin) : SV_Target
@@ -204,7 +209,7 @@ float4 ps_main(PixelShaderInput pin) : SV_Target
 	}
 
 	// is sky
-	if (!IsSky(depth)) discard;
+	if (IsSky(depth)) discard;
 
 	float3 posWS = PositionFromDepth(depth, pixelCoord, gScreenDim.w, gScreenToWorld);
 	float4 albedo = GammaToLinear(GBuffer0.Sample(Sampler, pixelCoord));

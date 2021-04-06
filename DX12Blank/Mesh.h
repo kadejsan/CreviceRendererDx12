@@ -24,11 +24,18 @@ struct Mesh
 {
 	// System memory copies.  Use Blobs because the vertex/index format can be generic.
 	// It is up to the client to cast appropriately.  
-	CPUBuffer	m_vertexBufferCPU;
-	CPUBuffer	m_indexBufferCPU;
+	CPUBuffer			m_vertexBufferCPU;
+	CPUBuffer			m_indexBufferCPU;
 
-	GPUBuffer	m_vertexBufferGPU;
-	GPUBuffer	m_indexBufferGPU;
+	GPUBuffer			m_vertexBufferGPU;
+	GPUBuffer			m_indexBufferGPU;
+
+	// Ray Tracing Acceleration Structure data
+	UINT				m_vertexCount;
+	UINT				m_vertexStride;
+	FORMAT				m_vertexFormat;
+	UINT				m_indexCount;
+	INDEXBUFFER_FORMAT	m_indexFormat;
 
 	// A MeshGeometry may store multiple geometries in one vertex/index buffer.
 	// Use this container to define the Submesh geometries so we can draw
@@ -41,8 +48,8 @@ public:
 
 	void Draw(Graphics::GraphicsDevice& device);
 
-	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, UINT stride);
-	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT64 size, FORMAT format);
+	void CreateVertexBuffers(Graphics::GraphicsDevice& device, void* data, UINT vertexCount, UINT stride, FORMAT format);
+	void CreateIndexBuffers(Graphics::GraphicsDevice& device, void* data, UINT indexCount, INDEXBUFFER_FORMAT format);
 
 	BoundingBox GetBoundingBox(const float4x4& world) const;
 

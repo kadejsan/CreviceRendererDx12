@@ -54,6 +54,7 @@ namespace Graphics
 		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) override;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
+		virtual void BindRayTracePSO(RayTracePSO* pso) override;
 		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
 		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
 		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
@@ -65,6 +66,7 @@ namespace Graphics
 		virtual void DrawIndexedInstanced(int indexCount, int instanceCount, UINT startIndexLocation, UINT baseVertexLocation, UINT startInstanceLocation) override;
 
 		virtual void Dispatch(UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ) override;
+		virtual void DispatchRays(const DispatchRaysDesc& desc) override;
 
 		virtual void CreateBlob(UINT64 byteSize, CPUBuffer* buffer) override;
 		virtual void CreateBuffer(const GPUBufferDesc& desc, const SubresourceData* initialData, GPUBuffer* buffer) override;
@@ -73,10 +75,14 @@ namespace Graphics
 		virtual void CreateInputLayout(const VertexInputLayoutDesc *inputElementDescs, UINT numElements, VertexLayout *inputLayout) override;
 		virtual void CreateGraphicsPSO(const GraphicsPSODesc* pDesc, GraphicsPSO* pso) override;
 		virtual void CreateComputePSO(const ComputePSODesc* pDesc, ComputePSO* pso) override;
+		virtual void CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso) override;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) override;
+		virtual void CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh) override;
 
 		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) override;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
+		virtual void TransitionMemoryBarrier(GPUResource* resource) override;
+		virtual void TransitionMemoryBarriers(GPUResource* const* resources, UINT numBarriers) override;
 
 		virtual void UpdateBuffer(GPUBuffer* buffer, const void* data, int dataSize = -1) override;
 		virtual void* AllocateFromRingBuffer(GPURingBuffer* buffer, UINT dataSize, UINT& offsetIntoBuffer) override;
@@ -93,11 +99,16 @@ namespace Graphics
 		virtual void* Map(const GPUBuffer* buffer) override;
 		virtual void Unmap(const GPUBuffer* buffer) override;
 
+		virtual GPUAllocation AllocateGPU(size_t dataSize) override;
+
 		virtual void BeginProfilerBlock(const char* name);
 		virtual void EndProfilerBlock();
 		virtual void SetMarker(const char* name);
 
 		virtual void FlushUI() override;
+
+		virtual bool UseRayTracing() override { return false; }
+		virtual void WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const override;
 
 	private:
 		VkInstance							m_instance;
