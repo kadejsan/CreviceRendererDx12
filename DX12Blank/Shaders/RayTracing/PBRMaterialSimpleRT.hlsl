@@ -3,6 +3,7 @@
 
 cbuffer cbRayTracedGbuffer : register(b0)
 {
+    float4x4 World;
     float4x4 View;
     float4   EyePos;
     float4   ResolutionTanHalfFovYAndAspectRatio;
@@ -94,8 +95,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
     float3 barycentrics = float3((1.0f - attrib.bary.x - attrib.bary.y), attrib.bary.x, attrib.bary.y);
     VertexAttributes vertex = GetVertexAttributes(triangleIndex, barycentrics, VertexBuffer, IndexBuffer);
 
+    float3 normal = mul(float4(vertex.Normal, 0.0f), World).xyz;
+
     payload.colorAndDistance = float4(gColor, 1.0f - RayTCurrent() / 1000.0f);
-    payload.normal = vertex.Normal;
+    payload.normal = normal;
     payload.roughnessMetalnessID = float3(gRoughness, gMetalness, gObjectID);
 }
 

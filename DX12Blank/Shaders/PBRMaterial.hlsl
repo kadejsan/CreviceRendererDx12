@@ -13,7 +13,6 @@ struct VertexOut
 {
 	float4 PosH				: SV_POSITION;
 	float3 Pos				: POSITION;
-	float3 Normal			: NORMAL;
 	float2 TexCoord			: TEXCOORD;
 	float3x3 TangentBasis	: TBASIS;
 };
@@ -35,7 +34,6 @@ VertexOut vs_main(VertexIn vin)
 	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorldViewProj);
 	vout.Pos = mul(float4(vin.PosL, 1.0f), gWorld).xyz;
 	vout.TexCoord = float2(vin.Tex.x, 1.0f - vin.Tex.y);
-	vout.Normal = mul(float4(vin.Normal, 0.0f), gWorld).xyz;
 
 	// Tangent space basis vectors (for normal mapping)
 	float3x3 TBN = float3x3(vin.Tangent, vin.Bitangent, vin.Normal);

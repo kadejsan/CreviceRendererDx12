@@ -3,6 +3,7 @@
 
 cbuffer cbRayTracedGbuffer : register(b0)
 {
+    float4x4 World;
     float4x4 View;
     float4   EyePos;
     float4   ResolutionTanHalfFovYAndAspectRatio;
@@ -103,16 +104,19 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
     // Tangent space basis vectors (for normal mapping)
     float3x3 TBN = float3x3(vertex.Tangent, vertex.Bitangent, vertex.Normal);
+    TBN = mul((float3x3)World, transpose(TBN));
 
-    float4 albedo = Albedo.SampleLevel(Sampler, vertex.TexCoord, 0);
-    float roughness = Roughness.SampleLevel(Sampler, vertex.TexCoord, 0).r;
-    float metalness = Metalness.SampleLevel(Sampler, vertex.TexCoord, 0).r;
+    float3 posL = mul(float4(vertex.Position, 1.0f), World).xyz;
+    float lod = clamp(length(posL - EyePos.xyz)/10.0f, 0.f, 13.f);
+
+    float4 albedo = Albedo.SampleLevel(Sampler, vertex.TexCoord, lod);
+    float roughness = Roughness.SampleLevel(Sampler, vertex.TexCoord, lod).r;
+    float metalness = Metalness.SampleLevel(Sampler, vertex.TexCoord, lod).r;
 
     // Get current pixel's normal and transform to world space.
-    float3 N = normalize(2.0 * Normal.SampleLevel(Sampler, vertex.TexCoord, 0).rgb - 1.0);
-    N = normalize(mul(transpose(TBN), N));
+    float3 N = normalize(2.0 * Normal.SampleLevel(Sampler, vertex.TexCoord, lod).rgb - 1.0);
+    N = normalize(mul(TBN, N));
 
-    //payload.colorAndDistance = float4(albedo.rgb, 1.0f - RayTCurrent() / 1000.0f);
     payload.colorAndDistance = float4(albedo.rgb, 1.0f - RayTCurrent() / 1000.0f);
     payload.normal = N;
     payload.roughnessMetalnessID = float3(roughness, metalness, gObjectID);

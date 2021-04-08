@@ -45,9 +45,9 @@ VertexAttributes GetVertexAttributes(uint triangleIndex, float3 barycentrics, By
 		address += (3 * COMPONENT_BYTE_SIZE);
 		v.Normal += asfloat(vb.Load3(address)) * barycentrics[i];
 		address += (3 * COMPONENT_BYTE_SIZE);
-		v.Tangent = asfloat(vb.Load3(address)) * barycentrics[i];
+		v.Tangent += asfloat(vb.Load3(address)) * barycentrics[i];
 		address += (3 * COMPONENT_BYTE_SIZE);
-		v.Bitangent = asfloat(vb.Load3(address)) * barycentrics[i];
+		v.Bitangent += asfloat(vb.Load3(address)) * barycentrics[i];
 		address += (3 * COMPONENT_BYTE_SIZE);
 		v.TexCoord += asfloat(vb.Load2(address)) * barycentrics[i];
 	}

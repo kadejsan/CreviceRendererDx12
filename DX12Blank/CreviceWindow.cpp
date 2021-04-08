@@ -752,6 +752,10 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 		{
 			const Camera* cam = GetCamera();
 
+			const RenderObject& model = m_model[UIContext::PBRModel];
+			XMMATRIX world = XMLoadFloat4x4(&model.GetWorld());
+			XMStoreFloat4x4(&rayTracedGBufferCB.World, world);
+
 			XMMATRIX view = XMLoadFloat4x4(&cam->m_view);
 			XMStoreFloat4x4(&rayTracedGBufferCB.View, view);
 
