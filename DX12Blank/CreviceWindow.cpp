@@ -763,6 +763,7 @@ void CreviceWindow::UpdateGlobalConstantBuffer()
 			XMStoreFloat4(&rayTracedGBufferCB.EyePos, eyePos);
 
 			rayTracedGBufferCB.ResolutionTanHalfFovYAndAspectRatio = float4((float)GetWidth(), (float)GetHeight(), tanf(0.5f * cam->m_fov), m_aspectRatio);
+			rayTracedGBufferCB.CameraNearFar = float2(cam->m_nearZ, cam->m_farZ);
 		}
 
 		GetDevice().UpdateBuffer(m_rayTracedGBufferCB, &rayTracedGBufferCB, sizeof(RayTracedGBufferCB));

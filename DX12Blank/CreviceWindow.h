@@ -119,6 +119,7 @@ private:
 		float4x4 View;
 		float4	 EyePos = float4(0, 0, 0, 0);
 		float4	 ResolutionTanHalfFovYAndAspectRatio;
+		float2	 CameraNearFar;
 	};
 	GPUBuffer* m_rayTracedGBufferCB;
 

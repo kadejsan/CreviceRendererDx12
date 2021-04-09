@@ -16,6 +16,11 @@ float LinearizeDepth2(float depth, float n, float f)
 	return lin;
 }
 
+float DelinearizeDepth2(float lin, float n, float f)
+{
+	return n * (lin - f) / ((n - f) * lin);
+}
+
 float3 PositionFromDepth(in float depth, in float2 pixelCoord, float aspectRatio, float4x4 screenToWorld)
 {
 	float2 cpos = pixelCoord;

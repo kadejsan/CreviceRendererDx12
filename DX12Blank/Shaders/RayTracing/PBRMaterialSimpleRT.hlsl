@@ -7,6 +7,7 @@ cbuffer cbRayTracedGbuffer : register(b0)
     float4x4 View;
     float4   EyePos;
     float4   ResolutionTanHalfFovYAndAspectRatio;
+    float2   CameraNearFar;
 };
 
 cbuffer cbPerObject : register(b1)
@@ -97,7 +98,10 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
     float3 normal = mul(float4(vertex.Normal, 0.0f), World).xyz;
 
-    payload.colorAndDistance = float4(gColor, 1.0f - RayTCurrent() / 1000.0f);
+    float linearDepth = CameraNearFar.y * RayTCurrent() / CameraNearFar.y;
+    float depth = DelinearizeDepth2(linearDepth, CameraNearFar.x, CameraNearFar.y);
+
+    payload.colorAndDistance = float4(gColor, 1.0f - depth);
     payload.normal = normal;
     payload.roughnessMetalnessID = float3(gRoughness, gMetalness, gObjectID);
 }
