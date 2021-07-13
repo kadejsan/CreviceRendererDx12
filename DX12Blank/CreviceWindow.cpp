@@ -13,12 +13,11 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
 
-#define PBR_MODEL 1
-
 CreviceWindow::CreviceWindow(std::string name)
 	: BaseWindow(name)
 	, m_modelID(EModelType::EMT_Sphere)
 	, m_variableShadingRate(0)
+	, m_scene(eScene::PBRModel)
 {
 }
 
@@ -51,6 +50,11 @@ void CreviceWindow::OnUpdate()
 	BaseWindow::OnUpdate();
 
 	GetDevice().EnableRayTracing(UIContext::UseRayTracing);
+
+	UIContext::IsRayTracingSupported = m_scene == eScene::PBRModel;
+	UIContext::ShowPBRModelCombo = m_scene == eScene::PBRModel;
+
+	m_scene = (eScene)UIContext::Scene;
 }
 
 void CreviceWindow::OnRender()
@@ -118,40 +122,43 @@ void CreviceWindow::OnRender()
 			}
 		}
 
-		if (GetDevice().UseRayTracing())
+		if (GetDevice().UseRayTracing() && m_scene == eScene::PBRModel)
 		{
 			ScopedTimer perf("Rendering Objects Ray Tracing", Renderer::GGraphicsDevice);
 
-#if PBR_MODEL
-			GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0, -1, RT_PASS_GBUFFER);
-			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_vertexBufferGPU, 1, -1, RT_PASS_GBUFFER);
-			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_indexBufferGPU, 2, -1, RT_PASS_GBUFFER);
-			GetRenderer().BindGBufferUAV();
-			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_rayTracedGBufferCB, 0, RT_PASS_GBUFFER);
-			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_objPsCB, 1, RT_PASS_GBUFFER);
-			GetDevice().BindSampler(SHADERSTAGE::RGS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0, RT_PASS_GBUFFER);
+			if (m_scene == eScene::PBRModel)
+			{
+				GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0, -1, RT_PASS_GBUFFER);
+				GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_vertexBufferGPU, 1, -1, RT_PASS_GBUFFER);
+				GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_indexBufferGPU, 2, -1, RT_PASS_GBUFFER);
+				GetRenderer().BindGBufferUAV();
+				GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_rayTracedGBufferCB, 0, RT_PASS_GBUFFER);
+				GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_objPsCB, 1, RT_PASS_GBUFFER);
+				GetDevice().BindSampler(SHADERSTAGE::RGS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0, RT_PASS_GBUFFER);
 
-			const RenderObject& model = m_model[UIContext::PBRModel];
-			UpdateObjectConstantBuffer(model, 1);
+				const RenderObject& model = m_model[UIContext::PBRModel];
+				UpdateObjectConstantBuffer(model, 1);
 
-			GPUResource* textures[] = {
-				m_textures[ETT_Albedo],
-				m_textures[ETT_Normal],
-				m_textures[ETT_Roughness],
-				m_textures[ETT_Metalness],
-			};
-			GetDevice().BindResources(SHADERSTAGE::RGS, textures, 3, 4, RT_PASS_GBUFFER);
+				GPUResource* textures[] = {
+					m_textures[ETT_Albedo],
+					m_textures[ETT_Normal],
+					m_textures[ETT_Roughness],
+					m_textures[ETT_Metalness],
+				};
+				GetDevice().BindResources(SHADERSTAGE::RGS, textures, 3, 4, RT_PASS_GBUFFER);
 
-			eRTPSO pso = UIContext::PBRModel == 0 ? eRTPSO::PBRSimpleSolidRT : eRTPSO::PBRSolidRT;
-			RayTracePSO* rtpso = GetRenderer().GetPSO(pso);
-			GetDevice().BindRayTracePSO(rtpso);
+				eRTPSO pso = UIContext::PBRModel == 0 ? eRTPSO::PBRSimpleSolidRT : eRTPSO::PBRSolidRT;
+				RayTracePSO* rtpso = GetRenderer().GetPSO(pso);
+				GetDevice().BindRayTracePSO(rtpso);
 
-			GetRenderer().RenderRayTracedObjects(pso);
-			
-			GetRenderer().BindGBufferUAV(false);
-#else
-			// TODO: implement pbr objects
-#endif
+				GetRenderer().RenderRayTracedObjects(pso);
+
+				GetRenderer().BindGBufferUAV(false);
+			}
+			else if(m_scene == eScene::SimpleSolids)
+			{
+				// TODO: implement pbr objects
+			}
 		}
 		else
 		{
@@ -172,48 +179,62 @@ void CreviceWindow::OnRender()
 				m_grid.Render();
 			}
 
-#if PBR_MODEL
-			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
-
-			GPUResource* textures[] = {
-				m_textures[ETT_Albedo],
-				m_textures[ETT_Normal],
-				m_textures[ETT_Roughness],
-				m_textures[ETT_Metalness],
-			};
-			GetDevice().BindResources(PS, textures, 0, 4);
-			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
-
-			VARIABLE_SHADING_RATE rate = ConvertToVariableShadingRate(m_variableShadingRate);
-			if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+			if (m_scene == eScene::PBRModel)
 			{
-				GetDevice().SetVariableShadingRateImage(GetRenderer().GetVRSImage(), VRS_COMBINER_OVERRIDE);
-			}
+				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 
-			const RenderObject& model = m_model[UIContext::PBRModel];
-			UpdateObjectConstantBuffer(model, 1);
-			model.m_mesh->Draw(GetDevice());
+				GPUResource* textures[] = {
+					m_textures[ETT_Albedo],
+					m_textures[ETT_Normal],
+					m_textures[ETT_Roughness],
+					m_textures[ETT_Metalness],
+				};
+				GetDevice().BindResources(PS, textures, 0, 4);
+				GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
-			if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
-			{
-				GetDevice().SetVariableShadingRateImage(nullptr, VRS_COMBINER_OVERRIDE);
-			}
-#else
-			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
-			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
-
-			int i = st_objectsOffset;
-			const Frustum& frustum = GetCamera()->m_frustum;
-			for (auto o : m_renderObjects)
-			{
-				//Update buffer
-				if (o.IsEnabled() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
+				VARIABLE_SHADING_RATE rate = ConvertToVariableShadingRate(m_variableShadingRate);
+				if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
 				{
-					UpdateObjectConstantBuffer(o, i++);
-					o.m_mesh->Draw(GetDevice());
+					GetDevice().SetVariableShadingRateImage(GetRenderer().GetVRSImage(), VRS_COMBINER_OVERRIDE);
+				}
+
+				const RenderObject& model = m_model[UIContext::PBRModel];
+				UpdateObjectConstantBuffer(model, 1);
+				model.m_mesh->Draw(GetDevice());
+
+				if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+				{
+					GetDevice().SetVariableShadingRateImage(nullptr, VRS_COMBINER_OVERRIDE);
 				}
 			}
-#endif
+			else if (m_scene == SimpleSolids)
+			{
+				GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(eGPSO::PBRSimpleSolid, UIContext::Wireframe));
+				GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
+
+				VARIABLE_SHADING_RATE rate = ConvertToVariableShadingRate(m_variableShadingRate);
+				if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+				{
+					GetDevice().SetVariableShadingRateImage(GetRenderer().GetVRSImage(), VRS_COMBINER_OVERRIDE);
+				}
+
+				int i = st_objectsOffset;
+				const Frustum& frustum = GetCamera()->m_frustum;
+				for (auto o : m_renderObjects)
+				{
+					//Update buffer
+					if (o.IsEnabled() && frustum.CheckBox(o.m_mesh->GetBoundingBox(o.GetWorld())))
+					{
+						UpdateObjectConstantBuffer(o, i++);
+						o.m_mesh->Draw(GetDevice());
+					}
+				}
+
+				if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+				{
+					GetDevice().SetVariableShadingRateImage(nullptr, VRS_COMBINER_OVERRIDE);
+				}
+			}
 
 			GetRenderer().SetGBuffer(false);
 		}
@@ -672,47 +693,51 @@ void CreviceWindow::InitializeRayTracingAccelerationStructure()
 {
 	m_rtAccelerationStructure = new RayTracingAccelerationStructure();
 
-#if PBR_MODEL
-	const RenderObject& ro = m_model[UIContext::PBRModel];
-	Mesh* mesh = ro.m_mesh.get();
+	if (m_scene == eScene::PBRModel)
+	{
+		const RenderObject& ro = m_model[UIContext::PBRModel];
+		Mesh* mesh = ro.m_mesh.get();
 
-	RayTracingAccelerationStructureDesc desc;
-	desc.Flags = AS_BUILD_FLAG_PREFER_FAST_TRACE;
-	
-	// Geometry Desc
-	RayTracingAccelerationStructureDesc::BottomLevelAccelerationStructure::Geometry& geometry = desc.BottomLevelAS.Geometries.emplace_back();
-	geometry.Type = AS_BOTTOM_LEVEL_GEOMETRY_TYPE_TRIANGLES;
-	geometry.Flags = AS_BOTTOM_LEVEL_GEOMETRY_FLAG_OPAQUE;
-	geometry.Triangles.VertexBufferGPUVirtualAddress = mesh->m_vertexBufferGPU.m_resource->GetGPUVirtualAddress();
-	geometry.Triangles.VertexStride = mesh->m_vertexStride;
-	geometry.Triangles.VertexCount = mesh->m_vertexCount;
-	geometry.Triangles.VertexFormat = mesh->m_vertexFormat;
-	geometry.Triangles.IndexBufferGPUVirtualAddress = mesh->m_indexBufferGPU.m_resource->GetGPUVirtualAddress();
-	geometry.Triangles.IndexCount = mesh->m_indexCount;
-	geometry.Triangles.IndexFormat = mesh->m_indexFormat;	
-	
-	// Bottom Level
-	desc.Type = AS_TYPE_BOTTOMLEVEL;
-	GetDevice().TransitionBarrier(&mesh->m_vertexBufferGPU, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, RESOURCE_STATE_GENERIC_READ);
-	GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
+		RayTracingAccelerationStructureDesc desc;
+		desc.Flags = AS_BUILD_FLAG_PREFER_FAST_TRACE;
 
-	// Instance Desc
-	RayTracingAccelerationStructureDesc::TopLevelAccelerationStructure::Instance& instance = desc.TopLevelAS.Instances.emplace_back();
-	const float4x4& world = ro.GetWorld();
-	instance.Transform = XMFLOAT3X4(
-		world._11, world._21, world._31, world._41,
-		world._12, world._22, world._32, world._42,
-		world._13, world._23, world._33, world._43
-	);
-	instance.InstanceID = 0;
-	instance.InstanceMask = 0xFF;
-	instance.InstanceContributionToHitGroupIndex = 0;
+		// Geometry Desc
+		RayTracingAccelerationStructureDesc::BottomLevelAccelerationStructure::Geometry& geometry = desc.BottomLevelAS.Geometries.emplace_back();
+		geometry.Type = AS_BOTTOM_LEVEL_GEOMETRY_TYPE_TRIANGLES;
+		geometry.Flags = AS_BOTTOM_LEVEL_GEOMETRY_FLAG_OPAQUE;
+		geometry.Triangles.VertexBufferGPUVirtualAddress = mesh->m_vertexBufferGPU.m_resource->GetGPUVirtualAddress();
+		geometry.Triangles.VertexStride = mesh->m_vertexStride;
+		geometry.Triangles.VertexCount = mesh->m_vertexCount;
+		geometry.Triangles.VertexFormat = mesh->m_vertexFormat;
+		geometry.Triangles.IndexBufferGPUVirtualAddress = mesh->m_indexBufferGPU.m_resource->GetGPUVirtualAddress();
+		geometry.Triangles.IndexCount = mesh->m_indexCount;
+		geometry.Triangles.IndexFormat = mesh->m_indexFormat;
 
-	// Top Level
-	desc.Type = AS_TYPE_TOPLEVEL;
-	GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
-#else
-#endif
+		// Bottom Level
+		desc.Type = AS_TYPE_BOTTOMLEVEL;
+		GetDevice().TransitionBarrier(&mesh->m_vertexBufferGPU, RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, RESOURCE_STATE_GENERIC_READ);
+		GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
+
+		// Instance Desc
+		RayTracingAccelerationStructureDesc::TopLevelAccelerationStructure::Instance& instance = desc.TopLevelAS.Instances.emplace_back();
+		const float4x4& world = ro.GetWorld();
+		instance.Transform = XMFLOAT3X4(
+			world._11, world._21, world._31, world._41,
+			world._12, world._22, world._32, world._42,
+			world._13, world._23, world._33, world._43
+		);
+		instance.InstanceID = 0;
+		instance.InstanceMask = 0xFF;
+		instance.InstanceContributionToHitGroupIndex = 0;
+
+		// Top Level
+		desc.Type = AS_TYPE_TOPLEVEL;
+		GetDevice().CreateRaytracingAccelerationStructure(desc, m_rtAccelerationStructure);
+	}
+	else if (m_scene == eScene::SimpleSolids)
+	{
+		// Todo: implement pbr simple solids
+	}
 }
 
 void CreviceWindow::UpdateGlobalConstantBuffer()

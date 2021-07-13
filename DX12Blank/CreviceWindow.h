@@ -25,6 +25,12 @@ enum eObject
 	Cylinder
 };
 
+enum eScene
+{
+	PBRModel,
+	SimpleSolids
+};
+
 class CreviceWindow : public BaseWindow
 {
 public:
@@ -136,6 +142,7 @@ private:
 	Gizmo			m_gizmo;
 	EModelType		m_modelID;
 	int				m_variableShadingRate;
+	eScene			m_scene;
 
 	RayTracingAccelerationStructure* m_rtAccelerationStructure;
 

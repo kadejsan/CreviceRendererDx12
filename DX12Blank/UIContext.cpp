@@ -5,12 +5,15 @@
 #include "CreviceWindow.h"
 #include "imgui.h"
 
+int UIContext::Scene = 0;
+
 bool UIContext::Wireframe = false;
 bool UIContext::DebugGrid = true;
 bool UIContext::UseRayTracing = false;
 
 int UIContext::HDRSkybox = 1;
 int UIContext::PBRModel = 0;
+bool UIContext::ShowPBRModelCombo = true;
 
 float UIContext::Time = 12.0f;
 float UIContext::LightIntensity = 1.0f;
@@ -233,6 +236,9 @@ void UIContext::ShowSceneSettings()
 {
 	ImGui::Begin("Scene Settings", &showSceneSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 	{
+		const char* scene[] = { "PBR Model", "Simple Solids" };
+		ImGui::Combo("Scene", &Scene, scene, IM_ARRAYSIZE(scene));
+
 		ImGui::Checkbox("Wireframe", &Wireframe);
 		ImGui::Checkbox("Grid", &DebugGrid);
 		if (IsRayTracingSupported)
@@ -263,8 +269,11 @@ void UIContext::ShowSceneSettings()
 
 		ImGui::Separator();
 
-		const char* models[] = { "Sphere", "Cerberus" };
-		ImGui::Combo("PBR Models", &PBRModel, models, IM_ARRAYSIZE(models));
+		if (ShowPBRModelCombo)
+		{
+			const char* models[] = { "Sphere", "Cerberus" };
+			ImGui::Combo("PBR Models", &PBRModel, models, IM_ARRAYSIZE(models));
+		}
 	}
 	ImGui::End();
 }

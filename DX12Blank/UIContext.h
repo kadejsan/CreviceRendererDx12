@@ -15,6 +15,8 @@ public:
 	static void ShowPostProcessSettings(CreviceWindow* window);
 	static void ShowObjectSettings(RenderObject& ro);
 
+	static int Scene;
+
 	static bool Wireframe;
 	static bool DebugGrid;
 
@@ -23,6 +25,7 @@ public:
 
 	static int HDRSkybox;
 	static int PBRModel;
+	static bool ShowPBRModelCombo;
 
 	static float Time;
 	static float LightIntensity;
