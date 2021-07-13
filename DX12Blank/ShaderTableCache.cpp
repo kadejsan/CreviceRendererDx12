@@ -21,10 +21,13 @@ void ShaderTableCache::Initialize(Graphics::GraphicsDevice& device, const PSOCac
 	m_stbCache.resize(RTPSO_MAX);
 
 	m_stbCache[PBRSimpleSolidRT] = std::make_unique<ShaderTable>();
-	device.CreateShaderTable(psoCache.GetPSO(PBRSimpleSolidRT), m_stbCache[PBRSimpleSolidRT].get());
+	device.CreateShaderTable(psoCache.GetPSO(PBRSimpleSolidRT), m_stbCache[PBRSimpleSolidRT].get(), RT_PASS_GBUFFER);
 
 	m_stbCache[PBRSolidRT] = std::make_unique<ShaderTable>();
-	device.CreateShaderTable(psoCache.GetPSO(PBRSolidRT), m_stbCache[PBRSolidRT].get());
+	device.CreateShaderTable(psoCache.GetPSO(PBRSolidRT), m_stbCache[PBRSolidRT].get(), RT_PASS_GBUFFER);
+
+	m_stbCache[RTAO] = std::make_unique<ShaderTable>();
+	device.CreateShaderTable(psoCache.GetPSO(RTAO), m_stbCache[RTAO].get(), RT_PASS_AMBIENT_OCCLUSION);
 }
 
 

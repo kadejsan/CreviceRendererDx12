@@ -18,6 +18,8 @@ void CameraArcBall::Update()
 	XMVECTOR target = XMVectorZero();
 	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
+	m_prevView = m_view;
+
 	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
 	XMStoreFloat4x4(&m_view, view);
 	XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
@@ -28,6 +30,8 @@ void CameraArcBall::Update()
 	XMStoreFloat4x4(&m_proj, proj);
 	XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
 	XMStoreFloat4x4(&m_invProj, invProj);
+
+	m_prevViewProj = m_viewProj;
 
 	XMMATRIX viewProj = view * proj;
 	XMStoreFloat4x4(&m_viewProj, viewProj);

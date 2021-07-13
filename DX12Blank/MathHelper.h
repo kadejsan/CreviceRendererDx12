@@ -37,6 +37,12 @@ public:
 	}
 
 	template<typename T>
+	static T Ceil(const T& a)
+	{
+		return std::ceil(a);
+	}
+
+	template<typename T>
 	static T Lerp(const T& a, const T& b, float t)
 	{
 		return a + (b - a)*t;

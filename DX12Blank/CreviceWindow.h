@@ -71,6 +71,7 @@ private:
 	void UpdateGlobalConstantBuffer();
 	void UpdateObjectConstantBuffer(const RenderObject& renderObject, UINT id = -1);
 	void UpdateObjectConstantBufferShadows(const RenderObject& renderObject, const GlobalLightCamera& lightCamera);
+	VARIABLE_SHADING_RATE ConvertToVariableShadingRate(int uiRate);
 
 	struct ObjectConstantsVS
 	{
@@ -134,6 +135,7 @@ private:
 	Grid			m_grid;
 	Gizmo			m_gizmo;
 	EModelType		m_modelID;
+	int				m_variableShadingRate;
 
 	RayTracingAccelerationStructure* m_rtAccelerationStructure;
 

@@ -42,14 +42,14 @@ namespace Graphics
 
 		virtual void BindVertexBuffers(GPUBuffer *const* vertexBuffers, int slot, int count, const UINT* strides, const UINT* offsets = nullptr) = 0;
 		virtual void BindIndexBuffer(GPUBuffer* indexBuffer, const FORMAT format, UINT offset) = 0;
-		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) = 0;
+		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) = 0;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) = 0;
 		virtual void BindComputePSO(ComputePSO* pso) = 0;
 		virtual void BindRayTracePSO(RayTracePSO* pso) = 0;
-		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
-		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) = 0;
-		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) = 0;
-		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) = 0;
+		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) = 0;
+		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count, RAYTRACING_PASS pass = RT_PASS_MAX) = 0;
+		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) = 0;
+		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) = 0;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) = 0;
 		virtual void DrawIndexed(int indexCount, UINT startIndexLocation, UINT baseVertexLocation) = 0;
@@ -69,7 +69,7 @@ namespace Graphics
 		virtual void CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso) = 0;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) = 0;
 		virtual void CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh) = 0;
-		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb) = 0;
+		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb, RAYTRACING_PASS pass) = 0;
 
 		virtual void TransitionBarrier(GPUResource* resource, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) = 0;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) = 0;
@@ -87,6 +87,9 @@ namespace Graphics
 		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) = 0;
 		virtual void CopyBuffer(GPUBuffer* dest, GPUBuffer* src) = 0;
 		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) = 0;
+
+		virtual void SetVariableShadingRate(VARIABLE_SHADING_RATE rate, VARIABLE_SHADING_RATE_COMBINER combiner) = 0;
+		virtual void SetVariableShadingRateImage(Texture2D* image, VARIABLE_SHADING_RATE_COMBINER combiner) = 0;
 
 		virtual void* Map(const GPUBuffer* buffer) = 0;
 		virtual void Unmap(const GPUBuffer* buffer) = 0;
@@ -115,6 +118,10 @@ namespace Graphics
 		virtual bool UseRayTracing() = 0;
 		virtual bool SupportRayTracing() = 0;
 		virtual void EnableRayTracing(bool enable) = 0;
+
+		virtual bool SupportVariableRateShadingTier1() = 0;
+		virtual bool SupportVariableRateShadingTier2() = 0;
+		virtual UINT GetVariableRateShadingImageTileSize() = 0;
 
 		virtual void WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const = 0;
 

@@ -27,6 +27,7 @@ enum eGPSO
 	LinearizeDepth,
 	AmbientOcclusionPass,
 	Blur,
+	LowPassFilter,
 
 	GPSO_MAX,
 };
@@ -45,6 +46,7 @@ enum eRTPSO
 {
 	PBRSimpleSolidRT,
 	PBRSolidRT,
+	RTAO,
 
 	RTPSO_MAX,
 };

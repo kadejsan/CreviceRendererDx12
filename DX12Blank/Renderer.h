@@ -7,6 +7,7 @@
 #include "ShaderTableCache.h"
 #include "RenderTarget.h"
 #include "AmbientOcclusion.h"
+#include "RayTracedAmbientOcclusion.h"
 
 class Renderer
 {
@@ -29,6 +30,8 @@ public:
 
 	inline Graphics::Sampler* GetSamplerState(eSamplerState state) const { return m_samplerCache.GetSamplerState(state); }
 
+	inline Texture2D* GetVRSImage() const { return m_variableRateShadingImage; }
+
 	inline void SetGBuffer(bool set = true) { set ? m_gbuffer.Activate() : m_gbuffer.Deactivate(); }
 	inline void SetFrameBuffer(bool set = true) { set ? m_frameBuffer.Activate() : m_frameBuffer.Deactivate(); }
 	inline void SetSelectionDepth() { m_selectionDepth.Clear(0.0f); GetDevice()->BindRenderTargets(0, nullptr, m_selectionDepth.GetTexture()); }
@@ -36,11 +39,12 @@ public:
 
 	void InitializePSO();
 
-	DispatchRaysDesc InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth);
+	DispatchRaysDesc InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth, RAYTRACING_PASS pass);
 	void RenderRayTracedObjects(eRTPSO pso);
 
 	void InitializeHitProxyBuffers();
 	void InitializeIBLTextures(const std::string& name);
+	void InitializeVRSImage(UINT width, UINT height, VARIABLE_SHADING_RATE rate);
 
 	void BindIBL();
 	void BindGBuffer();
@@ -52,6 +56,7 @@ public:
 	void RenderLighting();
 	void RenderBackground();
 	void RenderAmbientOcclusion();
+	void RenderRayTracedAmbientOcclusion(const Camera& camera);
 	void DoPostProcess();
 	void LinearizeDepth(const Camera& camera);
 
@@ -66,13 +71,15 @@ private:
 
 	RenderTarget				  m_gbuffer;
 	RenderTarget				  m_frameBuffer;
-	RenderTarget				  m_linearDepth;
+	RenderTarget				  m_linearDepth[eFrame::Max];
 
 	Texture2D*					  m_envTexture;
 	Texture2D*					  m_envTextureEquirect;
 	Texture2D*					  m_envTextureUnfiltered;
 	Texture2D*					  m_irradianceMap;
 	Texture2D*					  m_spBRDFLut;
+
+	Texture2D*					  m_variableRateShadingImage;
 
 	struct SpecularMapFilterConstants
 	{
@@ -91,6 +98,7 @@ private:
 
 	// Ambient occlusion
 	AmbientOcclusion			  m_ambientOcclusion;
+	RayTracedAmbientOcclusion	  m_rtAmbientOcclusion;
 
 public:
 	static const Graphics::FORMAT RTFormat_LDR = Graphics::FORMAT_R8G8B8A8_UNORM;
@@ -109,6 +117,7 @@ public:
 	static const Graphics::FORMAT RTFormat_LinearDepth = Graphics::FORMAT_R16_UNORM;
 
 	static const Graphics::FORMAT RTFormat_AO = Graphics::FORMAT_R16_UNORM;
+	static const Graphics::FORMAT RTFormat_RTAO = Graphics::FORMAT_R8G8B8A8_UNORM;
 
 	static const UINT DSShadowMap_Resolution = 1024;
 };

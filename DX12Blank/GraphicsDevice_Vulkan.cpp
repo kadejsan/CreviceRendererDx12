@@ -1381,7 +1381,7 @@ namespace Graphics
 
 	}
 
-	void GraphicsDevice_Vulkan::BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot)
+	void GraphicsDevice_Vulkan::BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 
 	}
@@ -1401,22 +1401,22 @@ namespace Graphics
 
 	}
 
-	void GraphicsDevice_Vulkan::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	void GraphicsDevice_Vulkan::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 
 	}
 
-	void GraphicsDevice_Vulkan::BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count)
+	void GraphicsDevice_Vulkan::BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 
 	}
 
-	void GraphicsDevice_Vulkan::BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	void GraphicsDevice_Vulkan::BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 
 	}
 
-	void GraphicsDevice_Vulkan::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot)
+	void GraphicsDevice_Vulkan::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 
 	}
@@ -1562,6 +1562,16 @@ namespace Graphics
 	}
 
 	void GraphicsDevice_Vulkan::MSAAResolve(Texture2D* dst, Texture2D* src)
+	{
+
+	}
+
+	void GraphicsDevice_Vulkan::SetVariableShadingRate(VARIABLE_SHADING_RATE rate, VARIABLE_SHADING_RATE_COMBINER combiner)
+	{
+
+	}
+
+	void GraphicsDevice_Vulkan::SetVariableShadingRateImage(Texture2D* image, VARIABLE_SHADING_RATE_COMBINER combiner)
 	{
 
 	}

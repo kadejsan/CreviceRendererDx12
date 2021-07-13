@@ -211,6 +211,14 @@ void PSOCache::InitializeGraphics(Graphics::GraphicsDevice& device)
 	m_cacheGraphics[Blur] = std::make_unique<GraphicsPSO>();
 	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[Blur].get());
 
+	psoDesc.VS = new VertexShader();
+	psoDesc.PS = new PixelShader();
+	device.CreateShader(L"Shaders\\LowPassFilter.hlsl", psoDesc.VS);
+	device.CreateShader(L"Shaders\\LowPassFilter.hlsl", psoDesc.PS);
+	psoDesc.RTFormats[0] = Renderer::RTFormat_AO;
+	m_cacheGraphics[LowPassFilter] = std::make_unique<GraphicsPSO>();
+	device.CreateGraphicsPSO(&psoDesc, m_cacheGraphics[LowPassFilter].get());
+
 	// Simple Color
 	psoDesc.VS = new VertexShader();
 	psoDesc.PS = new PixelShader();
@@ -293,4 +301,14 @@ void PSOCache::InitializeRayTrace(Graphics::GraphicsDevice& device)
 	device.CreateShader(L"Shaders\\RayTracing\\PBRMaterialRT.hlsl", psoDesc.CHS);
 	m_cacheRayTrace[PBRSolidRT] = std::make_unique<RayTracePSO>();
 	device.CreateRayTracePSO(&psoDesc, m_cacheRayTrace[PBRSolidRT].get());
+
+	psoDesc.RGS = new RayGenerationShader();
+	psoDesc.MS = new RayMissShader();
+	psoDesc.CHS = new RayClosestHitShader();
+	psoDesc.MaxPayloadSize = sizeof(float);
+	device.CreateShader(L"Shaders\\RayTracing\\RTAmbientOcclusion.hlsl", psoDesc.RGS);
+	device.CreateShader(L"Shaders\\RayTracing\\RTAmbientOcclusion.hlsl", psoDesc.MS);
+	device.CreateShader(L"Shaders\\RayTracing\\RTAmbientOcclusion.hlsl", psoDesc.CHS);
+	m_cacheRayTrace[RTAO] = std::make_unique<RayTracePSO>();
+	device.CreateRayTracePSO(&psoDesc, m_cacheRayTrace[RTAO].get());
 }

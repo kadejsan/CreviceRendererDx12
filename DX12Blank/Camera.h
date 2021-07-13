@@ -9,6 +9,13 @@ enum CameraType
 	Free,
 };
 
+enum eFrame
+{
+	Even = 0,
+	Odd = 1,
+	Max = 2
+};
+
 class Camera
 {
 public:
@@ -31,9 +38,11 @@ public:
 
 	float4x4 m_view			= MathHelper::Identity4x4();
 	float4x4 m_invView		= MathHelper::Identity4x4();
+	float4x4 m_prevView		= MathHelper::Identity4x4();
 	float4x4 m_proj			= MathHelper::Identity4x4();
 	float4x4 m_invProj		= MathHelper::Identity4x4();
 	float4x4 m_viewProj		= MathHelper::Identity4x4();
+	float4x4 m_prevViewProj = MathHelper::Identity4x4();
 	float4x4 m_invViewProj	= MathHelper::Identity4x4();
 
 	float3   m_eyePos		= float3(0.0f, 0.0f, 0.0f);

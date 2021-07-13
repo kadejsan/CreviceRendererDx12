@@ -41,7 +41,8 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 
 		m_frameBuffer.Initialize(window->GetWidth(), window->GetHeight(), true, Renderer::RTFormat_HDR);
 		
-		m_linearDepth.Initialize(window->GetWidth(), window->GetHeight(), false, Renderer::RTFormat_LinearDepth);
+		m_linearDepth[eFrame::Odd].Initialize(window->GetWidth(), window->GetHeight(), false, Renderer::RTFormat_LinearDepth);
+		m_linearDepth[eFrame::Even].Initialize(window->GetWidth(), window->GetHeight(), false, Renderer::RTFormat_LinearDepth);
 
 		m_selectionTexture.Initialize(window->GetWidth(), window->GetHeight());
 		m_selectionDepth.Initialize(window->GetWidth(), window->GetHeight(), 1U, 0.0f, 0);
@@ -49,10 +50,14 @@ Renderer::Renderer(GpuAPI gpuApi, BaseWindow* window)
 		m_shadowMap.Initialize(DSShadowMap_Resolution, DSShadowMap_Resolution, 1U, 1.0f, 0);
 
 		m_ambientOcclusion.Initialize(window->GetWidth(), window->GetHeight());
+		if(GGraphicsDevice->SupportRayTracing())
+			m_rtAmbientOcclusion.Initialize(window->GetWidth(), window->GetHeight());
 
 		GGraphicsDevice->SetBackBuffer();
 		InitializeConstantBuffers();
 		InitializeIBLTextures("environment.hdr");
+		if(GGraphicsDevice->SupportVariableRateShadingTier2())
+			InitializeVRSImage(window->GetWidth(), window->GetHeight(), VRS_1x1);
 		InitializeHitProxyBuffers();
 		TextRenderer::Font::Initialize(window->GetWidth(), window->GetHeight());
 	}
@@ -72,6 +77,8 @@ Renderer::~Renderer()
 	delete m_envTextureUnfiltered;
 	delete m_irradianceMap;
 	delete m_spBRDFLut;
+
+	delete m_variableRateShadingImage;
 
 	delete m_specularMapFilterCB;
 
@@ -109,7 +116,7 @@ void Renderer::InitializePSO()
 	m_psoCache.Initialize(*GGraphicsDevice);
 }
 
-Graphics::DispatchRaysDesc Renderer::InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth)
+Graphics::DispatchRaysDesc Renderer::InitializeDispatchRaysDesc(const RayTracePSO* rtpso, const ShaderTable* stb, UINT width, UINT height, UINT depth, RAYTRACING_PASS pass)
 {
 	DispatchRaysDesc dispatchRaysDesc;
 	dispatchRaysDesc.RayGeneration.GpuAddress = stb->m_shaderTable->GetGPUVirtualAddress();
@@ -127,6 +134,8 @@ Graphics::DispatchRaysDesc Renderer::InitializeDispatchRaysDesc(const RayTracePS
 	dispatchRaysDesc.Height = height;
 	dispatchRaysDesc.Depth = depth;
 
+	dispatchRaysDesc.Pass = pass;
+
 	return dispatchRaysDesc;
 }
 
@@ -138,7 +147,7 @@ void Renderer::RenderRayTracedObjects(eRTPSO pso)
 	UINT w = m_frameBuffer.GetDesc().Width;
 	UINT h = m_frameBuffer.GetDesc().Height;
 
-	DispatchRaysDesc dispatchRaysDesc = InitializeDispatchRaysDesc(rtpso, stb, w, h, 1);
+	DispatchRaysDesc dispatchRaysDesc = InitializeDispatchRaysDesc(rtpso, stb, w, h, 1, RT_PASS_GBUFFER);
 
 	GGraphicsDevice->DispatchRays(dispatchRaysDesc);
 }
@@ -271,6 +280,44 @@ void Renderer::InitializeIBLTextures(const std::string& name)
 	}
 }
 
+void Renderer::InitializeVRSImage(UINT width, UINT height, VARIABLE_SHADING_RATE rate)
+{
+	UINT tileSize = GGraphicsDevice->GetVariableRateShadingImageTileSize();
+	TextureDesc desc;
+	desc.Width = (UINT)MathHelper::Ceil((float)width / tileSize); desc.Height = (UINT)MathHelper::Ceil((float)height / tileSize);
+	desc.Format = FORMAT_R8_UINT;
+	desc.BindFlags = BIND_RESOURCE_NONE;
+	desc.MipLevels = 1;
+	desc.MiscFlags = 0;
+
+	if (m_variableRateShadingImage != nullptr)
+	{
+		delete m_variableRateShadingImage;
+		m_variableRateShadingImage = nullptr;
+	}
+
+	m_variableRateShadingImage = new Texture2D();
+
+	std::vector<BYTE> screenspaceImageData;
+	screenspaceImageData.resize(desc.Width * desc.Height);
+	for (UINT y = 0; y < desc.Height; ++y)
+	{
+		for (UINT x = 0; x < desc.Width; ++x)
+		{
+			int index = (y * desc.Width) + x;
+			screenspaceImageData[index] = static_cast<BYTE>(rate);
+		}
+	}
+
+	SubresourceData initData;
+	initData.SysMem = screenspaceImageData.data();
+	initData.SysMemPitch = desc.Width;
+	initData.SysMemSlicePitch = desc.Width * desc.Height;
+
+	GGraphicsDevice->CreateTexture2D(desc, &initData, &m_variableRateShadingImage);
+	GGraphicsDevice->TransitionBarrier(m_variableRateShadingImage, RESOURCE_STATE_COPY_DEST, RESOURCE_STATE_SHADING_RATE_SOURCE);
+}
+
 void Renderer::BindIBL()
 {
 	GPUResource* textures[] = {
@@ -300,17 +347,17 @@ void Renderer::BindGBufferUAV(bool set /*=true*/)
 	{
 		m_gbuffer.Clear();
 
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(0), 0);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(1), 1);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(2), 2);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(3), 3);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(0), 0, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(1), 1, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(2), 2, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, m_gbuffer.GetTexture(3), 3, -1, RT_PASS_GBUFFER);
 	}
 	else
 	{
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 0);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 1);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 2);
-		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 3);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 0, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 1, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 2, -1, RT_PASS_GBUFFER);
+		GGraphicsDevice->BindUnorderedAccessResource(RGS, nullptr, 3, -1, RT_PASS_GBUFFER);
 	}
 }
 
@@ -342,7 +389,7 @@ void Renderer::RenderLighting()
 	BindGBuffer();
 	BindShadowMap();
 
-	GGraphicsDevice->BindResource(PS, m_ambientOcclusion.GetAO(), 8);
+	GGraphicsDevice->BindResource(PS, GGraphicsDevice->UseRayTracing() ? m_rtAmbientOcclusion.GetAO() : m_ambientOcclusion.GetAO(), 8);
 	GGraphicsDevice->BindUnorderedAccessResource(PS, m_hitProxy, 0);
 
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LightingPass));
@@ -364,10 +411,36 @@ void Renderer::RenderBackground()
 
 void Renderer::RenderAmbientOcclusion()
 {
+	bool isEvenFrame = (GGraphicsDevice->GetCurrentFrameIndex() % 2) == 0;
+	RenderTarget& linearDepth = m_linearDepth[isEvenFrame ? eFrame::Even : eFrame::Odd];
+
 	GGraphicsDevice->BindResource(PS, m_gbuffer.GetTexture(1), 0);
-	GGraphicsDevice->BindResource(PS, m_linearDepth.GetTexture(0), 1);
+	GGraphicsDevice->BindResource(PS, linearDepth.GetTexture(0), 1);
 	
 	m_ambientOcclusion.ComputeAO(this);
+}
+
+void Renderer::RenderRayTracedAmbientOcclusion(const Camera& camera)
+{
+	// RTAO
+	bool isEvenFrame = (GGraphicsDevice->GetCurrentFrameIndex() % 2) == 0;
+	RenderTarget& linearDepthCurrent = m_linearDepth[isEvenFrame ? eFrame::Even : eFrame::Odd];
+	RenderTarget& linearDepthPrevious = m_linearDepth[isEvenFrame ? eFrame::Odd : eFrame::Even];
+
+	GGraphicsDevice->BindResource(RGS, m_gbuffer.GetTexture(1), 1, -1, RT_PASS_AMBIENT_OCCLUSION);
+	GGraphicsDevice->BindResource(RGS, linearDepthCurrent.GetTexture(0), 2, -1, RT_PASS_AMBIENT_OCCLUSION);
+	GGraphicsDevice->BindResource(RGS, linearDepthPrevious.GetTexture(0), 3, -1, RT_PASS_AMBIENT_OCCLUSION);
+	GGraphicsDevice->BindSampler(RGS, GetSamplerState(eSamplerState::LinearClamp), 0, RT_PASS_AMBIENT_OCCLUSION);
+
+	m_rtAmbientOcclusion.UpdateConstants(this, camera);
+
+	m_rtAmbientOcclusion.ComputeAO(this);
+
+	// Low Pass Filter
+	GGraphicsDevice->BindResource(PS, linearDepthCurrent.GetTexture(0), 0);
+	GGraphicsDevice->BindResource(PS, m_gbuffer.GetTexture(1), 1);
+
+	m_rtAmbientOcclusion.LowPassFilter(this, camera);
 }
 
 void Renderer::DoPostProcess()
@@ -383,7 +456,10 @@ void Renderer::DoPostProcess()
 
 void Renderer::LinearizeDepth(const Camera& camera)
 {
-	m_linearDepth.Activate();
+	bool isEvenFrame = (GGraphicsDevice->GetCurrentFrameIndex() % 2) == 0;
+	RenderTarget& linearDepth = m_linearDepth[isEvenFrame ? eFrame::Even : eFrame::Odd];
+
+	linearDepth.Activate();
 
 	m_ambientOcclusion.UpdateConstants(this, camera);
 
@@ -392,7 +468,7 @@ void Renderer::LinearizeDepth(const Camera& camera)
 	GGraphicsDevice->BindGraphicsPSO(GetPSO(eGPSO::LinearizeDepth));
 	GGraphicsDevice->DrawInstanced(3, 1, 0, 0);
 
-	m_linearDepth.Deactivate();
+	linearDepth.Deactivate();
 }
 
 Renderer::HitProxyData Renderer::ReadBackHitProxy()

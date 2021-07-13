@@ -53,14 +53,14 @@ namespace Graphics
 
 		virtual void BindVertexBuffers( GPUBuffer *const* vertexBuffers, int slot, int count, const UINT* strides, const UINT* offsets = nullptr) override;
 		virtual void BindIndexBuffer(GPUBuffer* indexBuffer, const FORMAT format, UINT offset) override;
-		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) override;
+		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) override;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
 		virtual void BindRayTracePSO(RayTracePSO* pso) override;
-		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
-		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
-		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
-		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
+		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) override;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) override;
 		virtual void DrawIndexed(int indexCount, UINT startIndexLocation, UINT baseVertexLocation) override;
@@ -80,7 +80,7 @@ namespace Graphics
 		virtual void CreateRayTracePSO(const RayTracePSODesc* pDesc, RayTracePSO* pso) override;
 		virtual void CreateSamplerState(const SamplerDesc *pSamplerDesc, Sampler *pSamplerState) override;
 		virtual void CreateRaytracingAccelerationStructure(const RayTracingAccelerationStructureDesc& pDesc, RayTracingAccelerationStructure* bvh) override;
-		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb) override;
+		virtual void CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb, RAYTRACING_PASS pass) override;
 
 		virtual void TransitionBarrier(GPUResource* resources, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES) override;
 		virtual void TransitionBarriers(GPUResource* const* resources, UINT* subresources, UINT NumBarriers, RESOURCE_STATES stateBefore, RESOURCE_STATES stateAfter) override;
@@ -99,6 +99,9 @@ namespace Graphics
 		virtual void CopyBuffer(GPUBuffer* dest, GPUBuffer* src) override;
 		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) override;
 
+		virtual void SetVariableShadingRate(VARIABLE_SHADING_RATE rate, VARIABLE_SHADING_RATE_COMBINER combiner) override;
+		virtual void SetVariableShadingRateImage(Texture2D* image, VARIABLE_SHADING_RATE_COMBINER combiner) override;
+
 		virtual void* Map(const GPUBuffer* buffer) override;
 		virtual void Unmap(const GPUBuffer* buffer) override;
 
@@ -114,12 +117,17 @@ namespace Graphics
 		virtual bool SupportRayTracing() override { return m_rayTracingSupported; }
 		virtual void EnableRayTracing(bool enable) override { m_useRayTracing = enable; }
 
+		virtual bool SupportVariableRateShadingTier1() override { return m_variableRateShadingTier1Supported; }
+		virtual bool SupportVariableRateShadingTier2() override { return m_variableRateShadingTier2Supported; }
+		virtual UINT GetVariableRateShadingImageTileSize() override { return m_variableRateShadingImageTileSize; }
+
 		virtual void WriteShaderIdentifier(const RayTracePSO* rtpso, LPCWSTR exportName, void* dest) const override;
 
 	private:
 		void GetHardwareAdapter( IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter );
 		bool CheckTearingSupport(ComPtr<IDXGIFactory4> factory4);
 		bool CheckRayTracingSupport(ComPtr<ID3D12Device> device);
+		void CheckVRSSupport(ComPtr<ID3D12Device> device);
 		void UpdateRenderTargetViews(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> descriptorHeap, UINT n);
 		void UpdateDepthStencil(ComPtr<ID3D12Device> device, ComPtr <ID3D12DescriptorHeap> descriptorHeap, UINT backBufferWidth, UINT backBufferHeight);
 		void UpdateViewportAndScissor(UINT backBufferWidth, UINT backBufferHeight);
@@ -141,7 +149,7 @@ namespace Graphics
 
 		void SetupForDraw();
 		void SetupForDispatch();
-		void SetupForDispatchRays();
+		void SetupForDispatchRays(RAYTRACING_PASS pass);
 
 		inline ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return Frames[m_frameIndex].GetCommandList(); }
 		inline UINT64 GetFenceValue() { return Frames[m_frameIndex].GetFenceValue(); }
@@ -156,8 +164,8 @@ namespace Graphics
 		ComPtr<ID3D12DescriptorHeap>		m_rtvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
 		ComPtr<ID3D12DescriptorHeap>		m_srvUIHeap;
-		ComPtr<ID3D12DescriptorHeap>		m_rtxCbvSrvUavHeap;
-		ComPtr<ID3D12DescriptorHeap>		m_rtxSamplerHeap;
+		ComPtr<ID3D12DescriptorHeap>		m_rtxCbvSrvUavHeap[RT_PASS_MAX];
+		ComPtr<ID3D12DescriptorHeap>		m_rtxSamplerHeap[RT_PASS_MAX];
 
 		ComPtr<ID3D12RootSignature>			m_graphicsRootSig;
 		ComPtr<ID3D12RootSignature>			m_computeRootSig;
@@ -189,6 +197,11 @@ namespace Graphics
 		// RayTracing infrastructure
 		bool								m_rayTracingSupported;
 		bool								m_useRayTracing;
+
+		// Variable Rate Shading infrastructure
+		bool								m_variableRateShadingTier1Supported;
+		bool								m_variableRateShadingTier2Supported;
+		UINT32								m_variableRateShadingImageTileSize;
 
 		struct FrameResources
 		{

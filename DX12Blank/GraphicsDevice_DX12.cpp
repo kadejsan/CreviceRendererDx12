@@ -1244,6 +1244,44 @@ namespace Graphics
 		}
 		return flags;
 	}
+	inline D3D12_SHADING_RATE ConvertVariableShadingRate(VARIABLE_SHADING_RATE rate)
+	{
+		switch (rate)
+		{
+		case VRS_1x1:
+			return D3D12_SHADING_RATE_1X1;
+		case VRS_1x2:
+			return D3D12_SHADING_RATE_1X2;
+		case VRS_2x1:
+			return D3D12_SHADING_RATE_2X1;
+		case VRS_2x2:
+			return D3D12_SHADING_RATE_2X2;
+		case VRS_2x4:
+			return D3D12_SHADING_RATE_2X4;
+		case VRS_4x2:
+			return D3D12_SHADING_RATE_4X2;
+		case VRS_4x4:
+			return D3D12_SHADING_RATE_4X4;
+		}
+		return D3D12_SHADING_RATE_1X1;
+	}
+	inline D3D12_SHADING_RATE_COMBINER ConvertVariableShadingRateCombiner(VARIABLE_SHADING_RATE_COMBINER combiner)
+	{
+		switch (combiner)
+		{
+		case VRS_COMBINER_OVERRIDE:
+			return D3D12_SHADING_RATE_COMBINER_OVERRIDE;
+		case VRS_COMBINER_PASSTHROUGH:
+			return D3D12_SHADING_RATE_COMBINER_PASSTHROUGH;
+		case VRS_COMBINER_MIN:
+			return D3D12_SHADING_RATE_COMBINER_MIN;
+		case VRS_COMBINER_MAX:
+			return D3D12_SHADING_RATE_COMBINER_MAX;
+		case VRS_COMBINER_SUM:
+			return D3D12_SHADING_RATE_COMBINER_SUM;
+		}
+		return D3D12_SHADING_RATE_COMBINER_PASSTHROUGH;
+	}
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 	// Allocator heaps:
@@ -1321,6 +1359,9 @@ namespace Graphics
 		: m_currentFence( 0 )
 		, m_useRayTracing( false )
 		, m_rayTracingSupported( false )
+		, m_variableRateShadingTier1Supported( false )
+		, m_variableRateShadingTier2Supported( false )
+		, m_variableRateShadingImageTileSize( 1 )
 	{
 	}
 
@@ -1391,10 +1432,13 @@ namespace Graphics
 			m_rtvHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, st_frameCount);
 			m_dsvHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, D3D12_DESCRIPTOR_HEAP_FLAG_NONE, 1);
 			m_srvUIHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 1);
-			m_rtxCbvSrvUavHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE, 
-				GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + GPU_RESOURCE_HEAP_UAV_COUNT);
-			m_rtxSamplerHeap = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-				GPU_SAMPLER_HEAP_COUNT);
+			for (int i = 0; i < RT_PASS_MAX; ++i)
+			{
+				m_rtxCbvSrvUavHeap[i] = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+					GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT + GPU_RESOURCE_HEAP_UAV_COUNT);
+				m_rtxSamplerHeap[i] = CreateDescriptorHeap(m_device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+					GPU_SAMPLER_HEAP_COUNT);
+			}
 
 			m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			m_dsvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -1525,6 +1569,30 @@ namespace Graphics
 		return false;
 	}
 
+	void GraphicsDevice_DX12::CheckVRSSupport(ComPtr<ID3D12Device> device)
+	{
+		D3D12_FEATURE_DATA_D3D12_OPTIONS6 options = {};
+		if (SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options, sizeof(options))))
+		{
+			if (options.VariableShadingRateTier == D3D12_VARIABLE_SHADING_RATE_TIER_1)
+			{
+				LOG("GpuApi:   Variable Rate Shading Tier1 supported");
+				m_variableRateShadingTier1Supported = true;
+			}
+			else if (options.VariableShadingRateTier == D3D12_VARIABLE_SHADING_RATE_TIER_2)
+			{
+				LOG("GpuApi:   Variable Rate Shading Tier2 supported");
+				m_variableRateShadingTier1Supported = true;
+				m_variableRateShadingTier2Supported = true;
+				m_variableRateShadingImageTileSize = options.ShadingRateImageTileSize;
+			}
+		}
+		else
+		{
+			LOG("GpuApi:   Variable Rate Shading not supported on current hardware");
+		}
+	}
+
 	ComPtr<ID3D12Device> GraphicsDevice_DX12::CreateDevice()
 	{
 		// Create the D3D graphics device
@@ -1570,6 +1638,9 @@ namespace Graphics
 
 		// Check ray tracing support
 		m_rayTracingSupported = CheckRayTracingSupport(pDevice);
+
+		// Check VRS support
+		CheckVRSSupport(pDevice);
 
 		// Enable debug messages in debug mode.
 #if defined(_DEBUG)
@@ -2290,9 +2361,9 @@ namespace Graphics
 		GetFrameResources().SamplerDescriptorsGPU->Validate(GetDevice(), GetCommandList());
 	}
 
-	void GraphicsDevice_DX12::SetupForDispatchRays()
+	void GraphicsDevice_DX12::SetupForDispatchRays(RAYTRACING_PASS pass)
 	{
-		ID3D12DescriptorHeap* ppHeaps[] = { m_rtxCbvSrvUavHeap.Get(), m_rtxSamplerHeap.Get() };
+		ID3D12DescriptorHeap* ppHeaps[] = { m_rtxCbvSrvUavHeap[pass].Get(), m_rtxSamplerHeap[pass].Get() };
 		GetCommandList()->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 		GetCommandList()->SetComputeRootSignature(m_computeRootSig.Get());
@@ -2617,7 +2688,7 @@ namespace Graphics
 		GetCommandList()->IASetIndexBuffer(&res);
 	}
 
-	void GraphicsDevice_DX12::BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot)
+	void GraphicsDevice_DX12::BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 		assert(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
 
@@ -2625,8 +2696,9 @@ namespace Graphics
 		{
 			if (stage > SHADERSTAGE::CS && stage < SHADERSTAGE::SHADERSTAGE_MAX)
 			{
+				assert(pass < RT_PASS_MAX && "Invalid ray tracing pass!");
 				UINT handleIncrement = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart();
+				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap[pass]->GetCPUDescriptorHandleForHeapStart();
 				handle.ptr += handleIncrement * slot;
 				m_device->CopyDescriptorsSimple(1, handle, *buffer->m_cbv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
@@ -2657,7 +2729,7 @@ namespace Graphics
 		}
 	}
 
-	void GraphicsDevice_DX12::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	void GraphicsDevice_DX12::BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 		assert(slot < GPU_RESOURCE_HEAP_SRV_COUNT);
 
@@ -2665,8 +2737,9 @@ namespace Graphics
 		{
 			if (stage > SHADERSTAGE::CS && stage < SHADERSTAGE::SHADERSTAGE_MAX)
 			{
+				assert(pass < RT_PASS_MAX && "Invalid ray tracing pass!");
 				UINT handleIncrement = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart();
+				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap[pass]->GetCPUDescriptorHandleForHeapStart();
 				handle.ptr += handleIncrement * (slot + GPU_RESOURCE_HEAP_CBV_COUNT);
 				m_device->CopyDescriptorsSimple(1, handle, *resource->m_srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
@@ -2690,18 +2763,18 @@ namespace Graphics
 		}
 	}
 
-	void GraphicsDevice_DX12::BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count)
+	void GraphicsDevice_DX12::BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 		if (resources != nullptr)
 		{
 			for (int i = 0; i < count; ++i)
 			{
-				BindResource(stage, resources[i], slot + i, -1);
+				BindResource(stage, resources[i], slot + i, -1, pass);
 			}
 		}
 	}
 
-	void GraphicsDevice_DX12::BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/)
+	void GraphicsDevice_DX12::BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex /*= -1*/, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 		assert(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
 
@@ -2709,8 +2782,9 @@ namespace Graphics
 		{
 			if (stage > SHADERSTAGE::CS && stage < SHADERSTAGE::SHADERSTAGE_MAX)
 			{
+				assert(pass < RT_PASS_MAX && "Invalid ray tracing pass!");
 				UINT handleIncrement = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart();
+				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap[pass]->GetCPUDescriptorHandleForHeapStart();
 				handle.ptr += handleIncrement * (slot + GPU_RESOURCE_HEAP_CBV_COUNT + GPU_RESOURCE_HEAP_SRV_COUNT);
 				m_device->CopyDescriptorsSimple(1, handle, *resource->m_uav, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
@@ -2734,7 +2808,7 @@ namespace Graphics
 		}
 	}
 
-	void GraphicsDevice_DX12::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot)
+	void GraphicsDevice_DX12::BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot, RAYTRACING_PASS pass /* = RT_PASS_MAX */)
 	{
 		assert(slot < GPU_SAMPLER_HEAP_COUNT);
 
@@ -2742,8 +2816,9 @@ namespace Graphics
 		{
 			if (stage > SHADERSTAGE::CS && stage < SHADERSTAGE::SHADERSTAGE_MAX)
 			{
+				assert(pass < RT_PASS_MAX && "Invalid ray tracing pass!");
 				UINT handleIncrement = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxSamplerHeap->GetCPUDescriptorHandleForHeapStart();
+				D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtxSamplerHeap[pass]->GetCPUDescriptorHandleForHeapStart();
 				handle.ptr += handleIncrement * slot;
 				m_device->CopyDescriptorsSimple(1, handle, *sampler->m_resource, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 			}
@@ -2796,7 +2871,7 @@ namespace Graphics
 
 	void GraphicsDevice_DX12::DispatchRays(const DispatchRaysDesc& desc)
 	{
-		SetupForDispatchRays();
+		SetupForDispatchRays(desc.Pass);
 
 		ComPtr<ID3D12GraphicsCommandList4> commandList5;
 		if (SUCCEEDED(GetCommandList().As(&commandList5)))
@@ -4128,7 +4203,7 @@ namespace Graphics
 		}
 	}
 
-	void GraphicsDevice_DX12::CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb)
+	void GraphicsDevice_DX12::CreateShaderTable(const RayTracePSO* pso, ShaderTable* stb, RAYTRACING_PASS pass)
 	{
 		/*
 		The Shader Table layout is as follows:
@@ -4191,7 +4266,7 @@ namespace Graphics
 		//auto resDescGPU = GetFrameResources().ResourceDescriptorsGPU;
 		//D3D12_GPU_DESCRIPTOR_HANDLE handle = resDescGPU->m_heapCPU->GetGPUDescriptorHandleForHeapStart();
 		//handle.ptr += CS * resDescGPU->m_itemCount * resDescGPU->m_itemSize;
-		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart();
+		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_rtxCbvSrvUavHeap[pass]->GetGPUDescriptorHandleForHeapStart();
 
 		// Set the root parameter data. Point to start of descriptor heap.
 		*reinterpret_cast<D3D12_GPU_DESCRIPTOR_HANDLE*>(pData + shaderIdSize) = handle;
@@ -4607,6 +4682,38 @@ namespace Graphics
 			GetCommandList()->ResourceBarrier(2, preResolveBarriers);
 			GetCommandList()->ResolveSubresource(dst->m_resource.Get(), 0, src->m_resource.Get(), 0, ConvertFormat(format));
 			GetCommandList()->ResourceBarrier(2, postResolveBarriers);
+		}
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	void GraphicsDevice_DX12::SetVariableShadingRate(VARIABLE_SHADING_RATE rate, VARIABLE_SHADING_RATE_COMBINER combiner)
+	{
+		ComPtr<ID3D12GraphicsCommandList5> commandList5;
+		if (SUCCEEDED(GetCommandList().As(&commandList5)))
+		{
+			D3D12_SHADING_RATE_COMBINER combiners[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = 
+				{ ConvertVariableShadingRateCombiner(combiner), D3D12_SHADING_RATE_COMBINER_PASSTHROUGH };
+			commandList5->RSSetShadingRate(ConvertVariableShadingRate(rate), combiners);
+		}
+	}
+
+	void GraphicsDevice_DX12::SetVariableShadingRateImage(Texture2D* image, VARIABLE_SHADING_RATE_COMBINER combiner)
+	{
+		ComPtr<ID3D12GraphicsCommandList5> commandList5;
+		if (SUCCEEDED(GetCommandList().As(&commandList5)))
+		{
+			D3D12_SHADING_RATE_COMBINER choosePerPrimitive[D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT] = 
+				{ D3D12_SHADING_RATE_COMBINER_PASSTHROUGH, ConvertVariableShadingRateCombiner(combiner) };
+			commandList5->RSSetShadingRate(ConvertVariableShadingRate(VRS_1x1), choosePerPrimitive);
+			if (image)
+			{
+				commandList5->RSSetShadingRateImage(image->m_resource.Get());
+			}
+			else
+			{
+				commandList5->RSSetShadingRateImage(nullptr);
+			}
 		}
 	}
 

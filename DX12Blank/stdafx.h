@@ -48,7 +48,7 @@
 #ifdef _DEBUG
 #define LOG( str, ... ) \
 { \
-	char buffer[500]; sprintf_s(buffer, 500, str, __VA_ARGS__); \
+	char buffer[1000]; sprintf_s(buffer, 1000, str, __VA_ARGS__); \
 	size_t len = strlen(buffer); \
 	buffer[len] = '\n'; \
 	buffer[len+1] = '\0'; \

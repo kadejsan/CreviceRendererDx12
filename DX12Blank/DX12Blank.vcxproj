@@ -175,6 +175,7 @@ xcopy /y /d  "$(ProjectDir)Lib\dxc\*.dll" "$(TargetDir)"</Command>
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="PSOCache.h" />
+    <ClInclude Include="RayTracedAmbientOcclusion.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderObject.h" />
     <ClInclude Include="RenderTarget.h" />
@@ -223,6 +224,7 @@ xcopy /y /d  "$(ProjectDir)Lib\dxc\*.dll" "$(TargetDir)"</Command>
     <ClCompile Include="MathHelper.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="PSOCache.cpp" />
+    <ClCompile Include="RayTracedAmbientOcclusion.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderObject.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
@@ -351,6 +353,16 @@ xcopy /y /d  "$(ProjectDir)Lib\dxc\*.dll" "$(TargetDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\PBRMaterialRT.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RTAmbientOcclusion.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\LowPassFilter.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

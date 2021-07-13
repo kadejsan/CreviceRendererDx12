@@ -18,6 +18,7 @@
 CreviceWindow::CreviceWindow(std::string name)
 	: BaseWindow(name)
 	, m_modelID(EModelType::EMT_Sphere)
+	, m_variableShadingRate(0)
 {
 }
 
@@ -40,6 +41,9 @@ void CreviceWindow::OnInit()
 	GetDevice().PresentEnd();
 
 	Renderer::GGraphicsDevice->Flush();
+
+	UIContext::IsRayTracingSupported = GetDevice().SupportRayTracing();
+	UIContext::IsVRSSupported = GetDevice().SupportVariableRateShadingTier2();
 }
 
 void CreviceWindow::OnUpdate()
@@ -77,6 +81,15 @@ void CreviceWindow::OnRender()
 		}
 	}
 
+	if (GetDevice().SupportVariableRateShadingTier2())
+	{
+		if (m_variableShadingRate != UIContext::VariableRateShading)
+		{
+			GetRenderer().InitializeVRSImage(m_width, m_height, ConvertToVariableShadingRate(UIContext::VariableRateShading));
+			m_variableShadingRate = UIContext::VariableRateShading;
+		}
+	}
+
 	UpdateHDRSkybox();
 
 	UpdateGlobalConstantBuffer();
@@ -110,13 +123,13 @@ void CreviceWindow::OnRender()
 			ScopedTimer perf("Rendering Objects Ray Tracing", Renderer::GGraphicsDevice);
 
 #if PBR_MODEL
-			GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0);
-			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_vertexBufferGPU, 1);
-			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_indexBufferGPU, 2);
+			GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0, -1, RT_PASS_GBUFFER);
+			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_vertexBufferGPU, 1, -1, RT_PASS_GBUFFER);
+			GetDevice().BindResource(SHADERSTAGE::RGS, &m_model[UIContext::PBRModel].m_mesh->m_indexBufferGPU, 2, -1, RT_PASS_GBUFFER);
 			GetRenderer().BindGBufferUAV();
-			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_rayTracedGBufferCB, 0);
-			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_objPsCB, 1);
-			GetDevice().BindSampler(SHADERSTAGE::RGS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_rayTracedGBufferCB, 0, RT_PASS_GBUFFER);
+			GetDevice().BindConstantBuffer(SHADERSTAGE::RGS, m_objPsCB, 1, RT_PASS_GBUFFER);
+			GetDevice().BindSampler(SHADERSTAGE::RGS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0, RT_PASS_GBUFFER);
 
 			const RenderObject& model = m_model[UIContext::PBRModel];
 			UpdateObjectConstantBuffer(model, 1);
@@ -127,7 +140,7 @@ void CreviceWindow::OnRender()
 				m_textures[ETT_Roughness],
 				m_textures[ETT_Metalness],
 			};
-			GetDevice().BindResources(SHADERSTAGE::RGS, textures, 3, 4);
+			GetDevice().BindResources(SHADERSTAGE::RGS, textures, 3, 4, RT_PASS_GBUFFER);
 
 			eRTPSO pso = UIContext::PBRModel == 0 ? eRTPSO::PBRSimpleSolidRT : eRTPSO::PBRSolidRT;
 			RayTracePSO* rtpso = GetRenderer().GetPSO(pso);
@@ -171,9 +184,20 @@ void CreviceWindow::OnRender()
 			GetDevice().BindResources(PS, textures, 0, 4);
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
 
+			VARIABLE_SHADING_RATE rate = ConvertToVariableShadingRate(m_variableShadingRate);
+			if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+			{
+				GetDevice().SetVariableShadingRateImage(GetRenderer().GetVRSImage(), VRS_COMBINER_OVERRIDE);
+			}
+
 			const RenderObject& model = m_model[UIContext::PBRModel];
 			UpdateObjectConstantBuffer(model, 1);
 			model.m_mesh->Draw(GetDevice());
+
+			if (GetDevice().SupportVariableRateShadingTier2() && rate > VRS_1x1)
+			{
+				GetDevice().SetVariableShadingRateImage(nullptr, VRS_COMBINER_OVERRIDE);
+			}
 #else
 			GetDevice().BindGraphicsPSO(GetRenderer().GetPSO(UIContext::PBRModel == 0 ? eGPSO::PBRSimpleSolid : eGPSO::PBRSolid, UIContext::Wireframe));
 			GetDevice().BindSampler(SHADERSTAGE::PS, GetRenderer().GetSamplerState(eSamplerState::AnisotropicWrap), 0);
@@ -203,7 +227,16 @@ void CreviceWindow::OnRender()
 		{
 			ScopedTimer perf("Ambient Occlusion", Renderer::GGraphicsDevice);
 
-			GetRenderer().RenderAmbientOcclusion();
+			if (GetDevice().UseRayTracing())
+			{
+				GetDevice().BindResource(SHADERSTAGE::RGS, m_rtAccelerationStructure->m_TLASResult, 0, -1, RT_PASS_AMBIENT_OCCLUSION);
+
+				GetRenderer().RenderRayTracedAmbientOcclusion(*m_camera);
+			}
+			else
+			{
+				GetRenderer().RenderAmbientOcclusion();
+			}
 		}
 
 		GetRenderer().SetFrameBuffer(true);
@@ -822,6 +855,21 @@ void CreviceWindow::UpdateObjectConstantBufferShadows(const RenderObject& render
 		XMStoreFloat4x4(&objCB.Scene, XMMatrixTranspose(lightCamera.m_view));
 		XMStoreFloat4x4(&objCB.WorldViewProj, XMMatrixTranspose(worldViewProj));
 		GetDevice().UpdateBuffer(m_objVsCB, &objCB, sizeof(ObjectConstantsVS));
+	}
+}
+
+Graphics::VARIABLE_SHADING_RATE CreviceWindow::ConvertToVariableShadingRate(int uiRate)
+{
+	switch (uiRate)
+	{
+	case 0: return VRS_1x1;
+	case 1: return VRS_1x2;
+	case 2: return VRS_2x1;
+	case 3: return VRS_2x2;
+	case 4: return VRS_2x4;
+	case 5: return VRS_4x2;
+	case 6: return VRS_4x4;
+	default: return VRS_1x1;
 	}
 }
 

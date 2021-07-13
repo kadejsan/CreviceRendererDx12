@@ -98,7 +98,7 @@ void ClosestHit(inout HitInfo payload, Attributes attrib)
 
     float3 normal = mul(float4(vertex.Normal, 0.0f), World).xyz;
 
-    float linearDepth = CameraNearFar.y * RayTCurrent() / CameraNearFar.y;
+    float linearDepth = RayTCurrent();
     float depth = DelinearizeDepth2(linearDepth, CameraNearFar.x, CameraNearFar.y);
 
     payload.colorAndDistance = float4(gColor, 1.0f - depth);

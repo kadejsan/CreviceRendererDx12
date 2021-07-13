@@ -51,14 +51,14 @@ namespace Graphics
 
 		virtual void BindVertexBuffers(GPUBuffer *const* vertexBuffers, int slot, int count, const UINT* strides, const UINT* offsets = nullptr) override;
 		virtual void BindIndexBuffer(GPUBuffer* indexBuffer, const FORMAT format, UINT offset) override;
-		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot) override;
+		virtual void BindConstantBuffer(SHADERSTAGE stage, GPUBuffer* buffer, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) override;
 		virtual void BindGraphicsPSO(GraphicsPSO* pso) override;
 		virtual void BindComputePSO(ComputePSO* pso) override;
 		virtual void BindRayTracePSO(RayTracePSO* pso) override;
-		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
-		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count) override;
-		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1) override;
-		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot) override;
+		virtual void BindResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindResources(SHADERSTAGE stage, GPUResource *const* resources, int slot, int count, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindUnorderedAccessResource(SHADERSTAGE stage, GPUResource* resource, int slot, int arrayIndex = -1, RAYTRACING_PASS pass = RT_PASS_MAX) override;
+		virtual void BindSampler(SHADERSTAGE stage, Sampler* sampler, int slot, RAYTRACING_PASS pass = RT_PASS_MAX) override;
 
 		virtual void Draw(int vertexCount, UINT startVertexLocation) override;
 		virtual void DrawIndexed(int indexCount, UINT startIndexLocation, UINT baseVertexLocation) override;
@@ -95,6 +95,9 @@ namespace Graphics
 		virtual void CopyTextureRegion(Texture* dst, UINT dstMip, UINT dstX, UINT dstY, UINT dstZ, Texture* src, UINT srcMip, UINT arraySlice) override;
 		virtual void CopyBuffer(GPUBuffer* dest, GPUBuffer* src) override;
 		virtual void MSAAResolve(Texture2D* dst, Texture2D* src) override;
+
+		virtual void SetVariableShadingRate(VARIABLE_SHADING_RATE rate, VARIABLE_SHADING_RATE_COMBINER combiner) override;
+		virtual void SetVariableShadingRateImage(Texture2D* image, VARIABLE_SHADING_RATE_COMBINER combiner) override;
 
 		virtual void* Map(const GPUBuffer* buffer) override;
 		virtual void Unmap(const GPUBuffer* buffer) override;

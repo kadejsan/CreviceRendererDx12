@@ -28,10 +28,16 @@ float UIContext::OcclusionPower = 8.0f;
 float UIContext::OcclusionFalloff = -0.4f;
 float UIContext::OcclusionDarkness = 1.0f;
 float UIContext::OcclusionRangeCheck = 1.0f;
+int UIContext::OcclusionSamplesCount = 1;
+
+int UIContext::VariableRateShading = 0;
 
 static bool showSceneSettings = true;
 static bool showCameraSettings = false;
 static bool showPostProcessSettings = false;
+
+bool UIContext::IsRayTracingSupported = false;
+bool UIContext::IsVRSSupported = false;
 
 void UIContext::DrawUI(CreviceWindow* window)
 {
@@ -82,7 +88,7 @@ void UIContext::DrawUI(CreviceWindow* window)
 	ShowAddObjectSettings(window, addPlane, addBox, addSphere, addCone, addCylinder);
 	if (showSceneSettings) ShowSceneSettings();
 	if (showCameraSettings) ShowCameraSettings();
-	if (showPostProcessSettings) ShowPostProcessSettings();
+	if (showPostProcessSettings) ShowPostProcessSettings(window);
 }
 
 void UIContext::ShowAddObjectSettings(CreviceWindow* window, bool addPlane, bool addBox, bool addSphere, bool addCone, bool addCylinder)
@@ -229,7 +235,16 @@ void UIContext::ShowSceneSettings()
 	{
 		ImGui::Checkbox("Wireframe", &Wireframe);
 		ImGui::Checkbox("Grid", &DebugGrid);
-		ImGui::Checkbox("RayTracing", &UseRayTracing);
+		if (IsRayTracingSupported)
+		{
+			ImGui::Checkbox("RayTracing", &UseRayTracing);
+		}
+		
+		if (IsVRSSupported)
+		{
+			const char* vrs[] = { "1x1", "1x2", "2x1", "2x2", "2x4", "4x2", "4x4" };
+			ImGui::Combo("Variable Shading Rate", &VariableRateShading, vrs, IM_ARRAYSIZE(vrs));
+		}
 
 		ImGui::Separator();
 
@@ -266,16 +281,23 @@ void UIContext::ShowCameraSettings()
 }
 
 
-void UIContext::ShowPostProcessSettings()
+void UIContext::ShowPostProcessSettings(CreviceWindow* window)
 {
 	ImGui::Begin("Post Process Settings", &showPostProcessSettings);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
 	{
 		ImGui::Checkbox("Enable SSAO", &EnableSSAO);
-		ImGui::SliderFloat("AO Radius", &OcclusionRadius, 0.0f, 1.0f);
+		ImGui::SliderFloat("AO Radius", &OcclusionRadius, 0.01f, 2.0f);
 		ImGui::SliderFloat("AO Strength", &OcclusionPower, 1.0f, 20.0f);
-		ImGui::SliderFloat("AO Falloff", &OcclusionFalloff, -1.0f, 1.0f);
-		ImGui::SliderFloat("AO Darkness", &OcclusionDarkness, 1.0f, 10.0f);
-		ImGui::SliderFloat("AO Range", &OcclusionRangeCheck, 0.0f, 10.0f);
+		if (window->GetDevice().UseRayTracing())
+		{
+			ImGui::SliderInt("AO Samples Count", &OcclusionSamplesCount, 1, 4);
+		}
+		else
+		{
+			ImGui::SliderFloat("AO Falloff", &OcclusionFalloff, -1.0f, 1.0f);
+			ImGui::SliderFloat("AO Darkness", &OcclusionDarkness, 1.0f, 10.0f);
+			ImGui::SliderFloat("AO Range", &OcclusionRangeCheck, 0.0f, 10.0f);
+		}
 	}
 	ImGui::End();
 }

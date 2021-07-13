@@ -12,11 +12,13 @@ public:
 	static void ShowAddObjectSettings(CreviceWindow* window, bool addPlane, bool addBox, bool addSphere, bool addCone, bool addCylinder);
 	static void ShowSceneSettings();
 	static void ShowCameraSettings();
-	static void ShowPostProcessSettings();
+	static void ShowPostProcessSettings(CreviceWindow* window);
 	static void ShowObjectSettings(RenderObject& ro);
 
 	static bool Wireframe;
 	static bool DebugGrid;
+
+	static bool IsRayTracingSupported;
 	static bool UseRayTracing;
 
 	static int HDRSkybox;
@@ -38,4 +40,8 @@ public:
 	static float OcclusionFalloff;
 	static float OcclusionDarkness;
 	static float OcclusionRangeCheck;
+	static int   OcclusionSamplesCount;
+
+	static bool IsVRSSupported;
+	static int VariableRateShading;
 };
