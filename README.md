@@ -1,5 +1,18 @@
 # CreviceRendererDx12
-DX12 based renderer tutorial
+
+C++ implementation of DirectX12 renderer.
+
+Features included:
+
+GPU API encapsulation
+Basic ray tracing infrastructure
+Basic 3D objects generation + editing gizmos
+Shadow mapping (PCF)
+PBR Lighting (roughness/metalness pipeline)
+IBL (Image Based Lighting)
+Tonemapping
+Ambient Occlusion (deferred & ray traced)
+Font rendering
 
 https://crevice-studios.com/games/dx12-renderer/
 
